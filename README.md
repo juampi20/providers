@@ -16,7 +16,7 @@ Personal provider repository for Nuvio.
 
 ## Adding a provider
 
-1. Create `providers/<name>.js` exporting `getStreams(tmdbId, mediaType, season, episode)` and returning a Promise of `{ name, title, url, quality, headers }`. Use `.then()` chains: Nuvio's Hermes engine has trouble with `async/await` in dynamic code. For TMDB calls use the global `TMDB_API_KEY` Nuvio injects (the user's key, else Nuvio's default); never declare your own.
+1. Create `providers/<name>.js` exporting `getStreams(tmdbId, mediaType, season, episode)` and returning a Promise of `{ name, title, url, quality, headers }`. Use `.then()` chains: Nuvio's Hermes engine has trouble with `async/await` in dynamic code. For TMDB calls use the global `TMDB_API_KEY` Nuvio injects (the user's key, else Nuvio's default) and never declare your own; older builds (desktop 1.1.21) inject none, so keep a keyless fallback like SoloLatino's Wikidata lookup.
 2. Add an entry to `scrapers` in `manifest.json` with `filename` pointing to it.
 3. Add tests in `test/` with saved HTML fixtures.
 

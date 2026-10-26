@@ -27,3 +27,30 @@ test('unpack exposes the vidhide hls links', () => {
     const links = JSON.parse(/var links=(\{[^}]*\})/.exec(_test.unpack(fixture('vidhide.html')))[1]);
     assert.match(links.hls2, /^https:\/\/.+\/master\.m3u8\?/);
 });
+
+function withFetch(handler, fn) {
+    const original = global.fetch;
+    const urls = [];
+    global.fetch = (url) => { urls.push(url); return Promise.resolve({ ok: true, json: () => Promise.resolve(handler(url)) }); };
+    return fn().then((r) => { global.fetch = original; return { result: r, urls }; }, (e) => { global.fetch = original; throw e; });
+}
+
+test('getImdbId falls back to Wikidata when Nuvio injects no TMDB_API_KEY', () => {
+    delete global.TMDB_API_KEY;
+    const wikidata = { results: { bindings: [{ imdb: { value: 'tt0903747' } }] } };
+    return withFetch(() => wikidata, () => _test.getImdbId('1396', 'tv')).then(({ result, urls }) => {
+        assert.strictEqual(result, 'tt0903747');
+        assert.strictEqual(urls.length, 1);
+        assert.match(urls[0], /^https:\/\/query\.wikidata\.org\/sparql\?/);
+        assert.match(decodeURIComponent(urls[0]), /wdt:P4983 "1396"/);
+    });
+});
+
+test('getImdbId uses TMDB with the injected TMDB_API_KEY', () => {
+    global.TMDB_API_KEY = 'injected';
+    return withFetch(() => ({ imdb_id: 'tt0133093' }), () => _test.getImdbId('603', 'movie')).then(({ result, urls }) => {
+        delete global.TMDB_API_KEY;
+        assert.strictEqual(result, 'tt0133093');
+        assert.deepStrictEqual(urls, ['https://api.themoviedb.org/3/movie/603?api_key=injected']);
+    });
+});

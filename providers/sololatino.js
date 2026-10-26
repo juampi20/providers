@@ -7,7 +7,9 @@ const CryptoJS = require('crypto-js');
 
 const EMBED_BASE = 'https://embed69.org/f/';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const LANGUAGES = { LAT: 'Latino', ESP: 'Castellano', SUB: 'Subtitulado' };
+// Wikimedia answers 403 to browser-like User-Agents from non-browsers; it wants one naming the client.
+const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)';
+const LANGUAGES ={ LAT: 'Latino', ESP: 'Castellano', SUB: 'Subtitulado' };
 
 function fetchText(url, referer) {
     const headers = { 'User-Agent': UA };
@@ -18,11 +20,25 @@ function fetchText(url, referer) {
     });
 }
 
+// Older Nuvio builds (e.g. desktop 1.1.21) don't inject TMDB_API_KEY, so fall back to Wikidata, which needs no key.
 function getImdbId(tmdbId, mediaType) {
+    if (typeof TMDB_API_KEY === 'undefined' || !TMDB_API_KEY) return getImdbIdFromWikidata(tmdbId, mediaType);
     const path = mediaType === 'movie' ? 'movie/' + tmdbId : 'tv/' + tmdbId + '/external_ids';
     return fetch('https://api.themoviedb.org/3/' + path + '?api_key=' + TMDB_API_KEY)
         .then(function (res) { return res.json(); })
         .then(function (data) { return data.imdb_id || null; });
+}
+
+// P4947 / P4983 are Wikidata's TMDB movie / TV ids, P345 the IMDb id.
+function getImdbIdFromWikidata(tmdbId, mediaType) {
+    const prop = mediaType === 'movie' ? 'P4947' : 'P4983';
+    const query = 'SELECT ?imdb WHERE { ?item wdt:' + prop + ' "' + String(tmdbId).replace(/\D/g, '') + '"; wdt:P345 ?imdb } LIMIT 1';
+    return fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query), { headers: { 'User-Agent': WIKIDATA_UA } })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            const row = data && data.results && data.results.bindings[0];
+            return row ? row.imdb.value : null;
+        });
 }
 
 function embedId(imdbId, mediaType, season, episode) {
@@ -137,4 +153,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
         });
 }
 
-module.exports = { getStreams: getStreams, _test: { parseEmbedPage: parseEmbedPage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
+module.exports = { getStreams: getStreams, _test: { getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
