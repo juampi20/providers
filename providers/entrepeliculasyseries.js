@@ -517,7 +517,7 @@ function unwrapEmbedShortener(url) {
   return null;
 }
 var VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
-var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer/;
+var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|byse/;
 function resolverFor(embedUrl) {
   const host = hostOf(embedUrl);
   const shortener = unwrapEmbedShortener(embedUrl);
@@ -530,7 +530,7 @@ function resolverFor(embedUrl) {
   if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
   if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
   if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: "okru", server: "OK.ru", resolve: resolveOkru, dynamic: true };
-  if (/doodstream|dood\.|ds2play/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
+  if (/doodstream|dood\.|ds2play|do7go/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
   return null;
 }
 

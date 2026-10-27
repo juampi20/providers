@@ -75,6 +75,30 @@
       "supportsExternalPlayer": true
     },
     {
+      "id": "doramasflix",
+      "name": "DoramasFlix",
+      "description": "Doramas y series asiáticas en Latino/Castellano/Subtitulado vía doramasflix.in (GraphQL).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "tv",
+        "movie"
+      ],
+      "filename": "providers/doramasflix.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=doramasflix.in&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
       "id": "elifilms",
       "name": "EliFilms",
       "description": "Movies and series in Latin Spanish via allcalidad.re (API REST, vimeos).",
@@ -159,6 +183,30 @@
       "filename": "providers/hackstore.js",
       "enabled": true,
       "logo": "https://www.google.com/s2/favicons?domain=hackstore2.com&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "lamovie",
+      "name": "LaMovie",
+      "description": "Movies, series and anime in Latin Spanish via lamovie.org (vimeos, voe).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/lamovie.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=lamovie.org&sz=128",
       "contentLanguage": [
         "es"
       ],
