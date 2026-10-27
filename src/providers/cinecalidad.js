@@ -16,33 +16,24 @@ function onSettings() {
 
 // The site's own title rarely matches TMDB's, so the Spanish title is tried first and the original title
 // second; both carry the release year, which the page's <h1> has to agree with.
+// The site's own title rarely matches TMDB's, so every harvested title becomes a slug candidate and the
+// page's own <h1> decides which candidate is the right movie.
 function getTitles(tmdbId) {
-    const key = core.tmdbApiKey();
-    if (!key) return Promise.reject(new Error('No TMDB API key: cinecalidad is searched by title, so it cannot resolve without one'));
-    return core.fetchJson('https://api.themoviedb.org/3/movie/' + tmdbId + '?api_key=' + encodeURIComponent(key) + '&language=es-MX')
-        .then(function (data) {
-            const year = String((data && data.release_date) || '').slice(0, 4);
-            const names = data ? [data.title, data.original_title] : [];
-            const titles = [];
-            names.forEach(function (name) {
-                if (name && !titles.filter(function (t) { return t.title === name; }).length) {
-                    titles.push({ title: name, year: year });
-                }
-            });
-            if (!titles.length) throw new Error('TMDB has no title for movie ' + tmdbId);
-            return titles;
-        });
+    return core.titlesFor(tmdbId, 'movie');
 }
 
 function movieUrl(slug) {
     return BASE + '/pelicula/' + slug + '/';
 }
 
-// The page's <h1> carries the title and its release year; a page whose year disagrees is the wrong movie.
-function pageYear(html) {
+// The page's <h1> carries the title and its release year; that header is what the matcher scores.
+function pageTitle(html) {
     const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
-    const year = h1 && /\((\d{4})\)/.exec(h1[1]);
-    return year ? year[1] : null;
+    return h1 ? core.splitTitleYear(h1[1].replace(/<[^>]*>/g, '')) : { title: '', year: null };
+}
+
+function pageYear(html) {
+    return pageTitle(html).year;
 }
 
 function embedUrls(html) {
@@ -56,24 +47,26 @@ function embedUrls(html) {
     return found;
 }
 
-// Tries every title × slug variant at once and keeps the page whose year matches. A page whose year
-// contradicts TMDB is dropped instead of used: another movie's streams are worse than none. A page whose
-// <h1> carries no year can't be checked, so it is allowed.
-function findMoviePage(titles) {
+// Tries every slug candidate at once and keeps the page the matcher picks: a page whose title or year does
+// not agree is dropped instead of used, because another movie's streams are worse than none.
+function findMoviePage(titleList, year) {
     const candidates = [];
-    titles.forEach(function (entry) {
+    core.slugVariants(titleList, 3).forEach(function (slug) {
         SLUG_VARIANTS.forEach(function (variant) {
-            candidates.push({ slug: core.buildSlug(entry.title) + variant, year: entry.year });
+            candidates.push(slug + variant);
         });
     });
-    return Promise.all(candidates.map(function (candidate) {
-        return core.fetchText(movieUrl(candidate.slug), BASE + '/')
-            .then(function (html) { return { html: html, year: candidate.year, pageYear: pageYear(html) }; })
+    return Promise.all(candidates.map(function (slug) {
+        return core.fetchText(movieUrl(slug), BASE + '/')
+            .then(function (html) {
+                const head = pageTitle(html);
+                return { html: html, title: head.title, year: head.year };
+            })
             .catch(function () { return null; });
     })).then(function (pages) {
         const usable = pages.filter(function (p) { return p && embedUrls(p.html).length; });
-        const trusted = usable.filter(function (p) { return !p.year || !p.pageYear || p.pageYear === p.year; });
-        return trusted.length ? trusted[0].html : null;
+        const match = core.bestTitleMatch(titleList, year, usable, {});
+        return match ? match.html : null;
     });
 }
 
@@ -96,7 +89,7 @@ function streamsFrom(embedUrl) {
 function getStreams(tmdbId, mediaType, season, episode) {
     if (mediaType !== 'movie') return Promise.resolve([]);
     return getTitles(tmdbId)
-        .then(findMoviePage)
+        .then(function (meta) { return findMoviePage(meta.titles, meta.year); })
         .then(function (html) {
             if (!html) return [];
             return Promise.all(embedUrls(html).filter(resolverFor).map(streamsFrom));
@@ -113,7 +106,7 @@ module.exports = {
     onSettings: onSettings,
     _test: {
         onSettings: onSettings, getTitles: getTitles, buildSlug: core.buildSlug, movieUrl: movieUrl, pageYear: pageYear,
-        embedUrls: embedUrls, findMoviePage: findMoviePage, decodeBase64: core.decodeBase64, unpack: core.unpack,
+        pageTitle: pageTitle, embedUrls: embedUrls, findMoviePage: findMoviePage, decodeBase64: core.decodeBase64, unpack: core.unpack,
         inferQuality: core.inferQuality, resolveVimeos: core.resolveVimeos, resolveStreamWish: core.resolveStreamWish,
         resolverFor: resolverFor, playableLinks: core.playableLinks, vibuxerUrl: core.vibuxerUrl
     }

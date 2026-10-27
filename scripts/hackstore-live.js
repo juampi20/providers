@@ -7,10 +7,10 @@ const slug = process.argv[2] || 'el-origen-2010';
 const postType = process.argv[3] === 'episodes' ? 'episodes' : 'movies';
 
 _test.findPostId(slug, postType)
-    .then((id) => {
-        console.log(slug, '-> post', id);
-        if (!id) return [];
-        return _test.fetchEmbeds(id);
+    .then((post) => {
+        console.log(slug, '-> post', post && post.id, '| titulo:', post && post.title);
+        if (!post) return [];
+        return _test.fetchEmbeds(post.id);
     })
     .then((embeds) => {
         const usable = embeds.filter((e) => _test.resolverFor(e.url));

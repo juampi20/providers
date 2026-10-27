@@ -56,6 +56,11 @@ providers is a deliberate goal, so the shape stays per-provider-file rather than
 - Each provider stands alone: no provider imports another, and a provider is one self-contained file.
 - Spanish coverage beats per-language breadth: latino content is the point, so a provider spends Nuvio's
   time budget on the first language that works instead of collecting every language at once.
+- A doubtful result is not returned. When a site is searched by title, the provider matches against every
+  title TMDB knows and reports nothing if the match is weak — another title's stream is worse than an empty
+  result.
+- A label states only what is known: a quality read from the link itself, a language the site declares. No
+  guessed codec, audio or HDR.
 - Nuvio owns the plugin's runtime. Providers read Nuvio's injected globals instead of declaring them, and
   keep a fallback path that works on builds that inject nothing.
 - A provider's parsers are pure functions over HTML, so saved fixtures can test them without network access.

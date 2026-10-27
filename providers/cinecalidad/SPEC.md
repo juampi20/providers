@@ -20,18 +20,22 @@ the year guard, and takes HTTP, base64 decoding, the unpacker, the resolvers and
 
 ## Resolving a movie
 
-The site has no search endpoint: a movie is addressed by its own slug, `pelicula/<slug>/`.
+The site has no search endpoint: a movie is addressed by its own slug, `pelicula/<slug>/`, whose naming
+follows the site's taste rather than TMDB's (often the English title). So the provider harvests every title
+TMDB knows for the id — Spanish, original and regional alternatives — turns each into a slug candidate,
+requests them all at once, and lets the matcher decide.
 
-1. TMDB (`language=es-MX`) gives the Spanish title and the original title plus the release year.
-2. Every title × `''`/`'-2'`/`'-3'` variant is requested **at once** — the site appends a counter when two
+1. `core.titlesFor` gives the title set and the release year (see [core](core)).
+2. Up to three slugs × `''`/`'-2'`/`'-3'` are requested in parallel — the site appends a counter when two
    movies collide — and only the pages that actually carry players are kept.
-3. The page's `<h1>` carries its release year. A page whose year contradicts TMDB is **dropped, not used**:
-   handing back another movie's streams is worse than handing back none. A page whose `<h1>` has no year
-   cannot be disproved and is accepted.
+3. `core.bestTitleMatch` scores each page's `<h1>` against the title set, with the year as a bonus and veto,
+   and **returns nothing below the threshold**.
 
-That last rule matters in practice: the site's slugs follow its own naming (often the English title), so a
-slug collision can serve a different movie entirely. The consequence is a known limitation — **coverage
-depends on TMDB's titles reproducing the site's slug**. When they don't, the provider returns `[]`.
+That last rule is the one that earns its keep: `pelicula/origen/` is *El Origen (2010)* while
+`pelicula/el-origen/` is *El origen de los guardianes (2012)*. Matching on titles finds the first and
+refuses the second; guessing a single slug would have picked whichever one the title happened to spell. A
+movie the site does not carry still returns `[]` — the site's catalogue is the limit, no longer the
+spelling of a slug.
 
 The provider needs a TMDB key (plugin settings or Nuvio's injected `TMDB_API_KEY`) for the same reason
 [hackstore](hackstore) does: the slug is built from a title.

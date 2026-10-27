@@ -14,32 +14,40 @@ function onSettings() {
     return core.tmdbSettings('Required. The site is searched by the Spanish title and year, so the title has to come from TMDB.');
 }
 
-// The site is keyed by its own slug, built from the Spanish title plus the year for movies and from the
-// series title plus season/episode for episodes — there is no search endpoint.
-function getTitle(tmdbId, mediaType) {
-    const key = core.tmdbApiKey();
-    if (!key) return Promise.reject(new Error('No TMDB API key: hackstore is searched by title, so it cannot resolve without one'));
-    return core.fetchJson('https://api.themoviedb.org/3/' + mediaType + '/' + tmdbId + '?api_key=' + encodeURIComponent(key) + '&language=es-MX')
-        .then(function (data) {
-            const title = data && (data.title || data.name);
-            if (!title) throw new Error('TMDB has no title for ' + mediaType + ' ' + tmdbId);
-            const date = data.release_date || data.first_air_date || '';
-            return { title: title, year: date.slice(0, 4) };
-        });
-}
-
-// Movies answer in data._id; episodes answer one level deeper, in data.episode._id.
+// Movies answer in data._id; episodes answer one level deeper, in data.episode._id. The title comes back too,
+// and it is what decides whether the slug found the right thing.
 function findPostId(slug, postType) {
     return core.fetchJson(API + '/single?post_name=' + encodeURIComponent(slug) + '&post_type=' + postType, { Referer: BASE + '/', Origin: BASE })
         .then(function (body) {
             const data = body && body.data;
             if (!data) return null;
-            return (data._id || (data.episode && data.episode._id)) || null;
+            const entry = data._id ? data : (data.episode || null);
+            if (!entry || !entry._id) return null;
+            return { id: entry._id, title: String(entry.title || '') };
         });
 }
 
 function episodeSlug(title, season, episode) {
     return core.buildSlug(title) + '-temporada-' + parseInt(season, 10) + '-episodio-' + parseInt(episode, 10);
+}
+
+// Every harvested title is tried as a slug at once, and the post is accepted only when the title the API
+// returns matches: a colliding slug would otherwise serve another movie.
+function findPost(titles, year, postType, season, episode) {
+    const slugs = core.slugVariants(titles, 3).map(function (slug) {
+        if (postType === 'movies') return slug + '-' + year;
+        return slug + '-temporada-' + parseInt(season, 10) + '-episodio-' + parseInt(episode, 10);
+    });
+    return Promise.all(slugs.map(function (slug) {
+        return findPostId(slug, postType).catch(function () { return null; });
+    })).then(function (found) {
+        const candidates = found.filter(function (entry) { return entry; }).map(function (entry) {
+            const head = core.splitTitleYear(entry.title);
+            return { id: entry.id, title: head.title, year: head.year };
+        });
+        const match = core.bestTitleMatch(titles, postType === 'movies' ? year : '', candidates, { season: season });
+        return match ? match.id : null;
+    });
 }
 
 function normalizeLanguage(lang) {
@@ -75,13 +83,10 @@ function resolveEmbed(embed) {
 }
 
 function getStreams(tmdbId, mediaType, season, episode) {
-    return getTitle(tmdbId, mediaType)
+    return core.titlesFor(tmdbId, mediaType)
         .then(function (meta) {
             const postType = mediaType === 'movie' ? 'movies' : 'episodes';
-            const slug = mediaType === 'movie'
-                ? core.buildSlug(meta.title) + '-' + meta.year
-                : episodeSlug(meta.title, season, episode);
-            return findPostId(slug, postType);
+            return findPost(meta.titles, meta.year, postType, season, episode);
         })
         .then(function (postId) {
             if (!postId) return [];
@@ -101,8 +106,8 @@ module.exports = {
     getStreams: getStreams,
     onSettings: onSettings,
     _test: {
-        onSettings: onSettings, getTitle: getTitle, buildSlug: core.buildSlug, episodeSlug: episodeSlug, findPostId: findPostId,
-        fetchEmbeds: fetchEmbeds, unpack: core.unpack, inferQuality: core.inferQuality, resolveVimeos: core.resolveVimeos,
+        onSettings: onSettings, getTitles: core.titlesFor, buildSlug: core.buildSlug, episodeSlug: episodeSlug, findPostId: findPostId,
+        findPost: findPost, fetchEmbeds: fetchEmbeds, unpack: core.unpack, inferQuality: core.inferQuality, resolveVimeos: core.resolveVimeos,
         resolveStreamWish: core.resolveStreamWish, resolverFor: resolverFor, playableLinks: core.playableLinks, vibuxerUrl: core.vibuxerUrl,
         groupByLanguage: function (embeds) { return core.groupByLanguage(embeds, LANGUAGE_ORDER); }
     }

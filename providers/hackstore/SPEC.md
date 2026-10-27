@@ -35,6 +35,11 @@ The player list then comes from `api/rest/player?post_id=…` as `[{ url, lang, 
 the site's own, so the cut is on real data, not a guess ([goal](goal#principles)). Castilian spellings the
 site uses (`Castellano`, `Latinoamericano`) are folded onto the three canonical names.
 
+The `single` endpoint also returns the post's title, and that is checked before its id is used: every
+harvested title is tried as a slug, and `core.bestTitleMatch` has to accept the title that comes back
+(otherwise `[]`). A colliding slug would otherwise hand back another movie's players, and episodes are
+matched with the season as well, so "temporada 4" is not accepted for a season 1 request.
+
 ## Servers
 
 Only hosts with a resolver become streams; everything else is dropped before any request.

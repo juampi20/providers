@@ -71,13 +71,13 @@ test('findMoviePage prefers the page whose year matches and skips pages without 
         { match: /pelicula\/amor-y-tesoro\/$/, body: page },
         { match: /pelicula\/amor-y-tesoro-2\/$/, body: '<html><h1>Amor y tesoro (1999)</h1>' + page.replace('<h1', '<div') + '</html>' }
     ];
-    return withRoutes(routes, () => _test.findMoviePage([{ title: 'Amor y tesoro', year: '2008' }])).then(({ result }) => {
+    return withRoutes(routes, () => _test.findMoviePage(['Amor y tesoro'], '2008')).then(({ result }) => {
         assert.strictEqual(result, page);
     });
 });
 
 test('findMoviePage returns null when no candidate page carries a player', () => {
-    return withRoutes([], () => _test.findMoviePage([{ title: 'Nada', year: '2008' }])).then(({ result }) => {
+    return withRoutes([], () => _test.findMoviePage(['Nada'], '2008')).then(({ result }) => {
         assert.strictEqual(result, null);
     });
 });
@@ -113,7 +113,7 @@ test('findMoviePage drops a page whose year contradicts TMDB instead of returnin
     const page = fixture('cinecalidad-movie.html');
     const wrong = page.replace(/<h1[^>]*>[^<]*<\/h1>/, '<h1>Otra pelicula (2012)</h1>');
     const routes = [{ match: /pelicula\/amor-y-tesoro\/$/, body: wrong }];
-    return withRoutes(routes, () => _test.findMoviePage([{ title: 'Amor y tesoro', year: '2008' }])).then(({ result }) => {
+    return withRoutes(routes, () => _test.findMoviePage(['Amor y tesoro'], '2008')).then(({ result }) => {
         assert.strictEqual(result, null);
     });
 });
@@ -121,7 +121,7 @@ test('findMoviePage drops a page whose year contradicts TMDB instead of returnin
 test('findMoviePage still accepts a page whose h1 has no year', () => {
     const page = fixture('cinecalidad-movie.html').replace(/<h1[^>]*>[^<]*<\/h1>/, '<h1>Amor y tesoro</h1>');
     const routes = [{ match: /pelicula\/amor-y-tesoro\/$/, body: page }];
-    return withRoutes(routes, () => _test.findMoviePage([{ title: 'Amor y tesoro', year: '2008' }])).then(({ result }) => {
+    return withRoutes(routes, () => _test.findMoviePage(['Amor y tesoro'], '2008')).then(({ result }) => {
         assert.strictEqual(result, page);
     });
 });

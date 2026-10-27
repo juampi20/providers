@@ -37,9 +37,15 @@ chains rather than `async`/`await`.
   declaring either; `tmdbSettings` renders the field Nuvio shows.
 - **`labeled`** shapes a stream (`name`, `<language> - <server>`, numbered suffix per extra link) so every
   provider reports the same way to Nuvio.
+- **Which title is this?** `titlesFor` harvests the Spanish title, the original one and the regional
+  alternatives from TMDB in three parallel requests; `titleSimilarity` scores word sets rather than
+  substrings; `bestTitleMatch` returns `null` below `TITLE_MATCH_THRESHOLD` (0.7) and drops a candidate
+  whose year is off by more than one. Returning nothing is the recorded preference over returning another
+  title's streams ([goal](goal#principles)); the threshold is the only knob, and it is strict on purpose.
 
 ## Testing
 
-Covered through the provider tests that exercise each helper against real fixtures (`unpack` and the
-resolvers via the vidhide/vimeos fixtures, `inferQuality` and `buildSlug` directly, the cut via the
-two-language page tests). Nothing here is tested in isolation for its own sake.
+Pure helpers are tested directly in `test/core.test.js` (title similarity, the matcher's threshold and year
+veto, slug variants, splitting `Title (year)`); the network-bound ones are covered through the provider
+tests that drive them with real fixtures (`unpack` and the resolvers via the vidhide/vimeos fixtures, the
+language cut via the two-language page tests).

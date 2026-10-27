@@ -156,6 +156,148 @@ function buildSlug(text) {
         .replace(/^-|-$/g, '');
 }
 
+// A title is "similar enough" at this score; below it a provider reports nothing instead of guessing.
+const TITLE_MATCH_THRESHOLD = 0.7;
+const TITLE_STOPWORDS = /^(the|a|an|of|and|el|la|los|las|de|del|y|e|un|una|le|les)$/;
+
+function foldTitle(text) {
+    return String(text || '').toLowerCase()
+        .replace(/[áéíóúüñàèìòùçäöï]/g, function (c) { return DIACRITICS[c]; })
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function titleWords(text) {
+    return foldTitle(text).split(' ').filter(function (w) {
+        return w && !TITLE_STOPWORDS.test(w);
+    });
+}
+
+// Splits "El Origen (2010)" into the title and the year a page or API hands back.
+function splitTitleYear(text) {
+    const source = String(text || '');
+    const year = /\((\d{4})\)/.exec(source);
+    return { title: source.replace(/\s*\(\d{4}\)\s*/, ' ').replace(/\s+/g, ' ').trim(), year: year ? year[1] : null };
+}
+
+function stripTrailingNumber(text) {
+    return String(text || '').replace(/\s+\d+$/, '').trim();
+}
+
+// Jaccard over word sets, with a bonus when every query word is present and a penalty when the
+// candidate carries words the query does not ("origen" must not match "los miserables el origen").
+function titleSimilarity(a, b) {
+    const wa = titleWords(a);
+    const wb = titleWords(b);
+    if (!wa.length || !wb.length) return 0;
+    if (wa.join(' ') === wb.join(' ')) return 1;
+    const inB = {};
+    const inA = {};
+    const union = {};
+    wb.forEach(function (w) { inB[w] = true; union[w] = true; });
+    wa.forEach(function (w) { inA[w] = true; union[w] = true; });
+    const inter = wa.filter(function (w) { return inB[w]; }).length;
+    const extra = wb.filter(function (w) { return !inA[w]; }).length;
+    let score = inter / Object.keys(union).length - extra * 0.05;
+    if (wa.every(function (w) { return inB[w]; })) score += 0.2;
+    // A one-word query must not swallow a longer title ("matrix" against "matrix reloaded").
+    if (wa.length === 1 && wb.length > 1) score -= 0.4;
+    return score;
+}
+
+// Picks the candidate whose title (and year, and season) best matches any harvested title.
+// Returns null below TITLE_MATCH_THRESHOLD: no result beats another movie's streams.
+function bestTitleMatch(titles, year, candidates, options) {
+    const opts = options || {};
+    const variants = [];
+    (titles || []).forEach(function (t) {
+        if (!t) return;
+        variants.push(t);
+        const bare = stripTrailingNumber(t);
+        if (bare && bare !== t) variants.push(bare);
+    });
+    let best = null;
+    let bestScore = 0;
+    (candidates || []).forEach(function (candidate) {
+        if (!candidate || !candidate.title) return;
+        let score = 0;
+        variants.forEach(function (t) {
+            let s = titleSimilarity(t, candidate.title);
+            if (foldTitle(t) === foldTitle(candidate.title)) s = 1;
+            if (s > score) score = s;
+        });
+        if (year && candidate.year) {
+            const dy = Math.abs(parseInt(year, 10) - parseInt(candidate.year, 10));
+            const trailing = /\s(\d{1,4})$/.exec(String(candidate.title));
+            if (trailing && trailing[1] !== String(year)) score -= 0.25;
+            // A same-title page from another year is a remake, not this movie: push it under the threshold.
+            if (dy === 0) score += 0.2;
+            else if (dy <= 1) score += 0.05;
+            else if (dy <= 5) score -= 0.45;
+            else score -= 0.6;
+        }
+        if (opts.season) {
+            const text = String(candidate.title).toLowerCase();
+            const found = /temporada\s*(\d+)|season\s*(\d+)|s(\d+)/.exec(text);
+            if (found) {
+                const mentioned = parseInt(found[1] || found[2] || found[3], 10);
+                score += mentioned === parseInt(opts.season, 10) ? 0.5 : -0.8;
+            }
+        }
+        if (score > bestScore) {
+            bestScore = score;
+            best = candidate;
+        }
+    });
+    return bestScore >= TITLE_MATCH_THRESHOLD ? best : null;
+}
+
+// Every title a site might have used for this id: Spanish, original, and the regional alternatives.
+// Three requests in parallel, because each one is paid for out of Nuvio's 60 s budget.
+function titlesFor(tmdbId, mediaType) {
+    const key = tmdbApiKey();
+    if (!key) return Promise.reject(new Error('No TMDB API key: this provider is searched by title, so it cannot resolve without one'));
+    const kind = mediaType === 'movie' ? 'movie' : 'tv';
+    const root = 'https://api.themoviedb.org/3/' + kind + '/' + tmdbId;
+    const query = '?api_key=' + encodeURIComponent(key);
+    const calls = [
+        fetchJson(root + query + '&language=es-MX'),
+        fetchJson(root + query + '&language=en-US'),
+        fetchJson(root + '/alternative_titles' + query)
+    ].map(function (call) { return call.catch(function () { return null; }); });
+    return Promise.all(calls).then(function (results) {
+        const primary = results[0] || results[1] || {};
+        const year = String(primary.release_date || primary.first_air_date || '').slice(0, 4);
+        const titles = [];
+        const add = function (t) {
+            if (!t || /[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/.test(t)) return;
+            if (titles.indexOf(t) < 0) titles.push(t);
+        };
+        results.forEach(function (data) {
+            if (!data) return;
+            add(data.title || data.name);
+            add(data.original_title || data.original_name);
+        });
+        const alternatives = (results[2] && results[2].titles) || [];
+        alternatives.forEach(function (entry) { add(entry && entry.title); });
+        if (!titles.length) throw new Error('TMDB has no title for ' + kind + ' ' + tmdbId);
+        return { titles: titles, year: year };
+    });
+}
+
+// Deduplicated slugs from every harvested title; capped because each one costs a request.
+function slugVariants(titles, limit) {
+    const out = [];
+    (titles || []).forEach(function (title) {
+        [title, stripTrailingNumber(title)].forEach(function (variant) {
+            const slug = buildSlug(variant);
+            if (slug.length > 1 && out.indexOf(slug) < 0) out.push(slug);
+        });
+    });
+    return out.slice(0, limit || 6);
+}
+
 // The key saved in the plugin settings wins over the one Nuvio injects; older builds (e.g. desktop 1.1.21)
 // inject none. A local declaration would shadow the injected global, so both are read through typeof.
 function tmdbApiKey() {
@@ -227,6 +369,13 @@ module.exports = {
     resolveVimeos: resolveVimeos,
     inferQuality: inferQuality,
     buildSlug: buildSlug,
+    titleSimilarity: titleSimilarity,
+    bestTitleMatch: bestTitleMatch,
+    titlesFor: titlesFor,
+    slugVariants: slugVariants,
+    splitTitleYear: splitTitleYear,
+    foldTitle: foldTitle,
+    TITLE_MATCH_THRESHOLD: TITLE_MATCH_THRESHOLD,
     tmdbApiKey: tmdbApiKey,
     tmdbSettings: tmdbSettings,
     groupByLanguage: groupByLanguage,

@@ -35,15 +35,15 @@ test('episodeSlug follows the site pattern without zero padding', () => {
     assert.strictEqual(_test.episodeSlug('Breaking Bad', '03', '05'), 'breaking-bad-temporada-3-episodio-5');
 });
 
-test('findPostId reads data._id for movies and data.episode._id for episodes', () => {
+test('findPostId reads data._id for movies and data.episode._id for episodes, with the title', () => {
     const movie = [{ match: /post_type=movies/, body: fixture('hackstore-single-movie.json') }];
     const episode = [{ match: /post_type=episodes/, body: fixture('hackstore-single-episode.json') }];
     return withRoutes(movie, () => _test.findPostId('el-origen-2010', 'movies'))
         .then(({ result }) => {
-            assert.strictEqual(result, 58180);
+            assert.deepStrictEqual(result, { id: 58180, title: 'El Origen (2010)' });
             return withRoutes(episode, () => _test.findPostId('breaking-bad-temporada-1-episodio-1', 'episodes'));
         })
-        .then(({ result }) => assert.strictEqual(result, 41526));
+        .then(({ result }) => assert.strictEqual(result.id, 41526));
 });
 
 test('fetchEmbeds keeps the site language and drops unusable entries', () => {
