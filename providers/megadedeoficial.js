@@ -595,6 +595,14 @@ function resolveMp4upload(embedUrl) {
     return [{ url: file[1], headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
   });
 }
+function resolveYourUpload(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://yourupload.com/");
+    const tag = /property\s*=\s*["']og:video["'][^>]*content\s*=\s*["']([^"']+)["']/i.exec(html) || /content\s*=\s*["']([^"']+)["'][^>]*property\s*=\s*["']og:video["']/i.exec(html);
+    if (!tag || tag[1].indexOf("/embed/novideo.mp4") >= 0) return [];
+    return [{ url: tag[1], headers: { "User-Agent": BROWSER_UA, Referer: "https://yourupload.com/" } }];
+  });
+}
 function unwrapEmbedShortener(url) {
   if (!/embedshortener\.|fkplayer\./i.test(String(url || ""))) return null;
   const token = String(url).split("/e/").pop().split(/[?#]/)[0];
@@ -637,6 +645,7 @@ function baseResolverFor(embedUrl) {
   if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
   if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
   if (/zilla-networks/.test(host)) return { key: "zilla", server: "HLS", resolve: resolveZilla };
+  if (/yourupload/.test(host)) return { key: "yourupload", server: "YourUpload", resolve: resolveYourUpload, dynamic: true };
   if (/mp4upload/.test(host)) return { key: "mp4upload", server: "MP4Upload", resolve: resolveMp4upload, dynamic: true };
   if (/streamtape/.test(host)) return { key: "streamtape", server: "StreamTape", resolve: resolveStreamtape, dynamic: true };
   if (/fastream/.test(host)) return { key: "fastream", server: "Fastream", resolve: resolveFastream, dynamic: true };
