@@ -65,5 +65,7 @@ which only `hls2` and `hls3` become streams. `hls4` is excluded because its segm
 libmpv refuses; nothing is probed ([goal](goal#non-goals)).
 
 Streams are titled `<language> - <server>` with a numeric suffix per extra link, and carry the player
-`User-Agent` plus the embed `Referer` the CDN expects. This is the only provider that bundles a dependency:
+`User-Agent` plus the embed `Referer` the CDN expects. `quality` comes from the tier list in the link
+itself (`_,l,n,h,.urlset`) and is `Auto` when the link carries no tier — a Vidhide `/hls2/…/…_n/master.m3u8`
+says nothing a label could repeat, so it says nothing. This is the only provider that bundles a dependency:
 `crypto-js` is compiled into the built file, so the artifact has no runtime `require` and works on FireTV.

@@ -117,6 +117,7 @@ function resolveEmbed(embed) {
     const embedUrl = playableEmbed(embed);
     const found = embed.server === 'streamwish' ? core.resolveStreamWish(embedUrl) : core.resolveVidhide(embedUrl);
     return found.then(function (streams) {
+        streams.forEach(function (s) { s.quality = core.inferQuality(s.url, embed.server); });
         return core.labeled('SoloLatino', LANGUAGES[embed.language] || embed.language, SERVERS[embed.server], streams);
     }).catch(function () { return []; });
 }
