@@ -34,6 +34,8 @@ providers is a deliberate goal, so the shape stays per-provider-file rather than
   Streamwish streams, labelled by language (Latino, Castellano, Subtitulado) and server.
 - **HackStore** — resolves movies and episodes from hackstore2.com's API into Vimeos and Streamwish
   streams, labelled by the site's own language.
+- **Vimeus** — resolves movies and episodes from vimeus.com, addressed by TMDB id; the only provider that
+  needs no API key at all.
 - **CineCalidad** — resolves movies from cinecalidad.vg into Vimeos and Streamwish streams (the site
   carries no language metadata, so everything is Latino).
 - **Latino first** — a provider resolves one language per call: it tries Latino, then Castellano, then

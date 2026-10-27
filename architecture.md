@@ -103,6 +103,7 @@ are not done until they pass there.
 - [sololatino](sololatino) — embed69-backed Latino / Castellano / subtitled source (Vidhide plays).
 - [hackstore](hackstore) — hackstore2.com API, Vimeos and Streamwish (Vimeos plays).
 - [cinecalidad](cinecalidad) — cinecalidad.vg movie slugs, Vimeos and Streamwish (Vimeos plays).
+- [vimeus](vimeus) — vimeus.com keyed by TMDB id, no API key needed (Vimeos plays).
 
 ## Sites without a provider
 

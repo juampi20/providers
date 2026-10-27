@@ -109,9 +109,9 @@ export async function resolveVimeos(embedUrl) {
 
 /** Hosts this repo knows how to turn into a playable link. */
 export const RESOLVERS = {
-    vimeos: { server: 'Vimeos', resolve: resolveVimeos },
-    streamwish: { server: 'Streamwish', resolve: resolveStreamWish },
-    vidhide: { server: 'Vidhide', resolve: resolveVidhide }
+    vimeos: { key: 'vimeos', server: 'Vimeos', resolve: resolveVimeos },
+    streamwish: { key: 'streamwish', server: 'Streamwish', resolve: resolveStreamWish },
+    vidhide: { key: 'vidhide', server: 'Vidhide', resolve: resolveVidhide }
 };
 
 /**

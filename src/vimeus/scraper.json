@@ -1,0 +1,12 @@
+{
+    "id": "vimeus",
+    "name": "Vimeus",
+    "description": "Movies and series in Latin Spanish via vimeus.com. Addresses titles by TMDB id, so it needs no API key.",
+    "version": "1.0.0",
+    "author": "chester",
+    "supportedTypes": ["movie", "tv"],
+    "logo": "https://www.google.com/s2/favicons?domain=vimeus.com&sz=128",
+    "contentLanguage": ["es"],
+    "formats": ["m3u8"],
+    "hasSettings": false
+}
