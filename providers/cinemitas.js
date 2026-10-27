@@ -556,6 +556,27 @@ function resolveVimeusEmbed(embedUrl) {
     return [];
   });
 }
+function resolveStreamtape(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://streamtape.com/");
+    const parts = /innerHTML\s*=\s*["']([^"']+)["']\s*\+\s*(?:["'][^"']*["']\s*\+\s*)?["']([^"']+)["']/i.exec(html);
+    if (parts) {
+      return [{ url: "https:" + parts[1] + parts[2], headers: { "User-Agent": BROWSER_UA, Referer: "https://streamtape.com/" } }];
+    }
+    const mp4 = /https?:\/\/(?:cdn|streamtape)\.streamtape\.com\/[^"'<\s]+\.mp4[^"'<\s]*/i.exec(html);
+    return mp4 ? [{ url: mp4[0], headers: { "User-Agent": BROWSER_UA, Referer: "https://streamtape.com/" } }] : [];
+  });
+}
+function resolveFastream(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://fastream.to/");
+    const unpacked = unpack(html) || html;
+    const file = /file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i.exec(unpacked);
+    const url = file ? file[1] : firstM3u8(unpacked);
+    if (!url) return [];
+    return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: "https://fastream.to/" } }];
+  });
+}
 function unwrapEmbedShortener(url) {
   if (!/embedshortener\.|fkplayer\./i.test(String(url || ""))) return null;
   const token = String(url).split("/e/").pop().split(/[?#]/)[0];
@@ -588,6 +609,8 @@ function resolverFor(embedUrl) {
   if (host.indexOf("goodstream") >= 0) return { key: "goodstream", server: "GoodStream", resolve: resolveGoodstream, dynamic: true };
   if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
   if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
+  if (/streamtape/.test(host)) return { key: "streamtape", server: "StreamTape", resolve: resolveStreamtape, dynamic: true };
+  if (/fastream/.test(host)) return { key: "fastream", server: "Fastream", resolve: resolveFastream, dynamic: true };
   if (host.indexOf("vimeus") >= 0) return { key: "vimeus", server: "Vimeus", resolve: resolveVimeusEmbed, dynamic: true };
   if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: "okru", server: "OK.ru", resolve: resolveOkru, dynamic: true };
   if (/doodstream|dood\.|ds2play|do7go/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
