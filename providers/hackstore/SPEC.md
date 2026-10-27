@@ -54,5 +54,6 @@ Only hosts with a resolver become streams; everything else is dropped before any
 `quality` is read from the tier list inside a multi-quality master URL (`_,n,h,.urlset`) — a pure function,
 so no link is ever probed. A URL with no tier and no `<n>p` in it reports `Auto`.
 
-Streams are titled `<language> - <server>` with a numeric suffix per extra link, and carry the player
+Streams are labelled as [core](core) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
+language, numbered suffix in `title` when one server yields several links — and carry the player
 `User-Agent` plus the embed `Referer` the CDN expects.

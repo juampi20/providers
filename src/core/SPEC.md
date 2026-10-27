@@ -35,8 +35,10 @@ chains rather than `async`/`await`.
   cannot accidentally reintroduce "fetch everything".
 - **The id/keys contract.** `tmdbApiKey` reads `SCRAPER_SETTINGS` then the injected `TMDB_API_KEY`, never
   declaring either; `tmdbSettings` renders the field Nuvio shows.
-- **`labeled`** shapes a stream (`name`, `<language> - <server>`, numbered suffix per extra link) so every
-  provider reports the same way to Nuvio.
+- **`labeled`** shapes every stream the way latinuvio does: `name` = `Provider • CALIDAD • Servidor` and
+  `title` = the language, with a numeric suffix in `title` when one server yields several links. Quality is
+  dropped from `name` when it is unknown instead of printing `AUTO` on every row, and no codec, audio, HDR
+  or "verified" mark is added — those would be invented or probed ([goal](goal#principles)).
 - **Which title is this?** `titlesFor` harvests the Spanish title, the original one and the regional
   alternatives from TMDB in three parallel requests; `titleSimilarity` scores word sets rather than
   substrings; `bestTitleMatch` returns `null` below `TITLE_MATCH_THRESHOLD` (0.7) and drops a candidate

@@ -1,12 +1,12 @@
 {
   "name": "Chester Providers",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "scrapers": [
     {
       "id": "sololatino",
       "name": "SoloLatino",
       "description": "Movies and series in Latin Spanish, Castilian and subtitled, via embed69 (vidhide). Latino first: one language per search.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "author": "chester",
       "supportedTypes": [
         "movie",
@@ -27,7 +27,7 @@
       "id": "hackstore",
       "name": "HackStore",
       "description": "Movies and series in Latin Spanish via hackstore2.com (vimeos, streamwish).",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": "chester",
       "supportedTypes": [
         "movie",
@@ -48,7 +48,7 @@
       "id": "cinecalidad",
       "name": "CineCalidad",
       "description": "Movies in Latin Spanish via cinecalidad.vg (vimeos, streamwish). Titles matched across TMDB locales.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "author": "chester",
       "supportedTypes": [
         "movie"
