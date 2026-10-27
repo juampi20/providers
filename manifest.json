@@ -267,6 +267,54 @@
       "supportsExternalPlayer": true
     },
     {
+      "id": "seriesmetro",
+      "name": "SeriesMetro",
+      "description": "Movies and series in Latin Spanish via seriesmetro.net (Fastream).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/seriesmetro.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=seriesmetro.net&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "verpelis",
+      "name": "VerPelis",
+      "description": "Movies and series in Latin Spanish via verpelis.gratis.",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/verpelis.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=verpelis.gratis&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
       "id": "vimeus",
       "name": "Vimeus",
       "description": "Movies and series in Latin Spanish via vimeus.com. Addresses titles by TMDB id, so it needs no API key.",
