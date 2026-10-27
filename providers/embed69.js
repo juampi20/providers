@@ -1,5 +1,5 @@
 /**
- * sololatino - Built from src/sololatino/ by build.js - do not edit by hand
+ * embed69 - Built from src/embed69/ by build.js - do not edit by hand
  */
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -67,7 +67,7 @@ var __async = (__this, __arguments, generator) => {
   });
 };
 
-// src/sololatino/index.js
+// src/embed69/index.js
 var index_exports = {};
 __export(index_exports, {
   _test: () => _testAll,
@@ -77,7 +77,7 @@ __export(index_exports, {
 });
 module.exports = __toCommonJS(index_exports);
 
-// src/sololatino/extractor.js
+// src/embed69/extractor.js
 var import_crypto_js = __toESM(require("crypto-js"));
 
 // src/_utils/http.js
@@ -320,8 +320,8 @@ function tmdbSettings(description) {
   }];
 }
 
-// src/sololatino/extractor.js
-var PROVIDER_NAME = "SoloLatino";
+// src/embed69/extractor.js
+var PROVIDER_NAME = "Embed69";
 var EMBED_BASE = "https://embed69.org/video/";
 var WIKIDATA_UA = "nuvio-providers/1.0 (https://github.com/juampi20/providers)";
 var LANGUAGES = { LAT: "Latino", ESP: "Castellano", SUB: "Subtitulado" };
@@ -448,7 +448,7 @@ var _test = {
   groupByLanguage: (embeds) => groupByLanguage(embeds, LANGUAGE_ORDER)
 };
 
-// src/sololatino/log.js
+// src/embed69/log.js
 function log() {
   const args = Array.from(arguments);
   let method = "log";
@@ -459,7 +459,7 @@ function log() {
   console[method](`[${PROVIDER_NAME}]`, ...args);
 }
 
-// src/sololatino/index.js
+// src/embed69/index.js
 function onSettings() {
   return tmdbSettings("Optional. Needed on Nuvio builds that do not share their TMDB key with plugins; without it, titles missing from Wikidata are not found.");
 }

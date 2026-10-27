@@ -1,5 +1,5 @@
 /**
- * SoloLatino — provider entry point called by Nuvio.
+ * Embed69 — provider entry point called by Nuvio.
  */
 
 import { extractStreams, _test } from './extractor.js';

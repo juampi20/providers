@@ -1,8 +1,8 @@
 ---
-id: sololatino
+id: embed69
 type: module-design
 status: draft
-title: SoloLatino provider
+title: Embed69 provider
 ---
 
 ## Responsibility

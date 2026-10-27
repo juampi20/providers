@@ -1,5 +1,5 @@
 /**
- * SoloLatino — the embed69 player sololatino.net embeds.
+ * Embed69 — the player sololatino.net embeds, addressed straight at embed69.org.
  *
  * Goes straight to embed69.org, since the site's own search sits behind Cloudflare. Resolves vidhide and
  * streamwish, which share the packed `var links` player.
@@ -13,7 +13,7 @@ import { inferQuality } from '../_utils/quality.js';
 import { labeled, groupByLanguage, resolveFirstLanguage } from '../_utils/labels.js';
 import { tmdbApiKey } from '../_utils/tmdb.js';
 
-export const PROVIDER_NAME = 'SoloLatino';
+export const PROVIDER_NAME = 'Embed69';
 
 // /video/ 302s to /f/ when the title is there, so it covers both layouts.
 const EMBED_BASE = 'https://embed69.org/video/';

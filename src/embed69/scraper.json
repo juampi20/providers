@@ -1,0 +1,19 @@
+{
+    "id": "embed69",
+    "name": "Embed69",
+    "description": "Movies and series in Latin Spanish, Castilian and subtitled, via embed69.org (vidhide, streamwish). Latino first: one language per search.",
+    "version": "1.3.0",
+    "author": "chester",
+    "supportedTypes": [
+        "movie",
+        "tv"
+    ],
+    "logo": "https://www.google.com/s2/favicons?domain=embed69.org&sz=128",
+    "contentLanguage": [
+        "es"
+    ],
+    "formats": [
+        "m3u8"
+    ],
+    "hasSettings": true
+}
