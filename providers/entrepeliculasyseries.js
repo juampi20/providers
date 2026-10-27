@@ -420,6 +420,7 @@ function withRealQuality(found) {
           quality,
           resolution: size ? size.width + "x" + size.height : "",
           protocol: "mp4",
+          kind: "direct",
           best: !!size && size.height >= 720
         };
       }
@@ -430,6 +431,7 @@ function withRealQuality(found) {
         quality: resolved.quality,
         resolution: resolved.height ? "x" + resolved.height : "",
         protocol: "hls",
+        kind: "web",
         best: !!resolved.height && resolved.height >= 1080
       };
     })));
@@ -730,9 +732,9 @@ var FORMATTERS = {
    */
   standard: {
     name: ["+star", "provider", "seasonEpisode"],
-    line2: ["server", "languageTag", "quality"],
+    line2: ["server", "web", "languageTag", "quality"],
     title: ["languageTag"],
-    description: [["title", "year"], ["seasonEpisode"], ["languageTag", "server", "quality"]]
+    description: [["title", "year"], ["seasonEpisode"], ["languageTag", "server", "web", "quality"]]
   },
   /** Todo en el nombre y la calidad sola abajo. */
   compact: {
@@ -788,13 +790,17 @@ function formatStream(fields, name = DEFAULT_FORMATTER) {
 }
 
 // src/_utils/labels.js
+function rank(stream) {
+  return stream.kind === "web" || stream.protocol === "hls" ? 1 : 0;
+}
 function seasonEpisodeOf(context) {
   if (!context || context.mediaType === "movie" || context.season === void 0 || context.season === null) return "";
   if (context.episode === void 0 || context.episode === null) return "";
   return "S" + parseInt(context.season, 10) + "E" + parseInt(context.episode, 10);
 }
 function labeled(provider, language, server, found, context) {
-  return found.map((stream, i) => {
+  const ordered = found.slice().sort((a, b) => rank(a) - rank(b));
+  return ordered.map((stream, i) => {
     const fields = {
       provider,
       language,
@@ -806,6 +812,8 @@ function labeled(provider, language, server, found, context) {
       star: stream.best ? "\u2B50 " : "",
       // El idioma solo se muestra cuando no es latino: en un catálogo latino es el caso normal.
       languageTag: language && language !== "Latino" ? language : "",
+      // `Web` marca lo que viene de un HLS/embed, que rinde menos que un archivo directo.
+      web: stream.kind === "web" || stream.protocol === "hls" ? "Web" : "",
       index: i + 1,
       title: context && context.title || "",
       year: context && context.year || "",

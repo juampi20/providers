@@ -76,6 +76,7 @@ export async function withRealQuality(found) {
                 quality,
                 resolution: size ? size.width + 'x' + size.height : '',
                 protocol: 'mp4',
+                kind: 'direct',
                 best: !!size && size.height >= 720
             };
         }
@@ -86,6 +87,7 @@ export async function withRealQuality(found) {
             quality: resolved.quality,
             resolution: resolved.height ? 'x' + resolved.height : '',
             protocol: 'hls',
+            kind: 'web',
             best: !!resolved.height && resolved.height >= 1080
         };
     }));

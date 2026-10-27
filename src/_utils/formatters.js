@@ -31,9 +31,9 @@ export const FORMATTERS = {
      */
     standard: {
         name: ['+star', 'provider', 'seasonEpisode'],
-        line2: ['server', 'languageTag', 'quality'],
+        line2: ['server', 'web', 'languageTag', 'quality'],
         title: ['languageTag'],
-        description: [['title', 'year'], ['seasonEpisode'], ['languageTag', 'server', 'quality']]
+        description: [['title', 'year'], ['seasonEpisode'], ['languageTag', 'server', 'web', 'quality']]
     },
     /** Todo en el nombre y la calidad sola abajo. */
     compact: {

@@ -148,7 +148,18 @@ export function bestTitleMatch(titles, year, candidates, options = {}) {
  * @param {string} tmdbId
  * @param {string} mediaType
  */
+// Wikidata limita el ritmo (429): se guarda lo ya resuelto mientras el plugin viva.
+const TITLE_CACHE = {};
+
 export async function titlesFor(tmdbId, mediaType) {
+    const cacheKey = mediaType + ':' + tmdbId;
+    if (TITLE_CACHE[cacheKey]) return TITLE_CACHE[cacheKey];
+    const resolved = await resolveTitles(tmdbId, mediaType);
+    TITLE_CACHE[cacheKey] = resolved;
+    return resolved;
+}
+
+async function resolveTitles(tmdbId, mediaType) {
     const key = tmdbApiKey();
     // Sin key (o si TMDB falla) los títulos salen de Wikidata, que no pide nada: sin esto cada provider que
     // busca por título exigiría una key propia, porque Nuvio no comparte la suya con los plugins.
@@ -194,9 +205,16 @@ export async function titlesFromWikidata(tmdbId, mediaType) {
     const prop = mediaType === 'movie' ? 'P4947' : 'P4983';
     const numeric = String(tmdbId).replace(/\D/g, '');
     const query = 'SELECT ?label ?lang WHERE { ?item wdt:' + prop + ' "' + numeric + '"; rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("es","en")) } LIMIT 12';
-    const response = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query), {
+    let response = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query), {
         headers: { 'User-Agent': WIKIDATA_UA }
     });
+    if (response.status === 429) {
+        // Un reintento corto: el límite por ráfaga se libera en menos de un segundo.
+        await new Promise((done) => setTimeout(done, 600));
+        response = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query), {
+            headers: { 'User-Agent': WIKIDATA_UA }
+        });
+    }
     if (!response.ok) throw new Error('Wikidata HTTP ' + response.status + ' for TMDB ' + tmdbId);
     const data = await response.json();
     const titles = [];

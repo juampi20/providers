@@ -48,6 +48,10 @@ draws `name` on the first line and `quality` on the second, so the formatter's `
 `languageTag` is the language unless it is Latino, the normal case in this catalogue and therefore noise. The
 star only appears on a stream whose quality was measured well (`variants.js` `best`).
 
+`Web` tags a stream that is an HLS rendition or an embed-derived URL, as opposed to a direct `.mp4` file. Direct
+files come first inside a language group, because they are the source itself and render better than a CDN
+rendition: a row without `Web` is the one to pick.
+
 ## Trade-off worth knowing
 
 Because `line2` travels in the `quality` field, that field no longer holds a bare quality: a client that sorts

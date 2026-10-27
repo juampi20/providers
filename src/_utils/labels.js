@@ -10,6 +10,11 @@ import { formatStream } from './formatters.js';
  * @typedef {{ mediaType?: string, season?: number, episode?: number, title?: string, year?: string }} MediaContext
  */
 
+/** Prioridad: archivo directo (0) antes que HLS/embed (1). */
+function rank(stream) {
+    return stream.kind === 'web' || stream.protocol === 'hls' ? 1 : 0;
+}
+
 /** `S1E1` en series; vacío en películas. */
 function seasonEpisodeOf(context) {
     if (!context || context.mediaType === 'movie' || context.season === undefined || context.season === null) return '';
@@ -30,7 +35,9 @@ function seasonEpisodeOf(context) {
  * @param {MediaContext} [context]
  */
 export function labeled(provider, language, server, found, context) {
-    return found.map((stream, i) => {
+    // Un archivo directo es la fuente completa; un HLS es una rendition del CDN. Van primero los directos.
+    const ordered = found.slice().sort((a, b) => rank(a) - rank(b));
+    return ordered.map((stream, i) => {
         const fields = {
             provider,
             language,
@@ -42,6 +49,8 @@ export function labeled(provider, language, server, found, context) {
             star: stream.best ? '⭐ ' : '',
             // El idioma solo se muestra cuando no es latino: en un catálogo latino es el caso normal.
             languageTag: language && language !== 'Latino' ? language : '',
+            // `Web` marca lo que viene de un HLS/embed, que rinde menos que un archivo directo.
+            web: stream.kind === 'web' || stream.protocol === 'hls' ? 'Web' : '',
             index: i + 1,
             title: (context && context.title) || '',
             year: (context && context.year) || '',
