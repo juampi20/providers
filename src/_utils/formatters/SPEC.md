@@ -28,34 +28,28 @@ field.
 ## The presets
 
 A formatter is a declarative list of parts per line, in the spirit of AIOStreams' formatters but limited to
-fields this repo can measure: `provider`, `server`, `language`, `quality`, `resolution`, `protocol`,
-`index`, and the media (`title`, `year`, `seasonEpisode`). A part that resolves to nothing is dropped, so one
-config reads right for a movie and for an episode.
+fields this repo can measure: `provider`, `server`, `language`, `languageTag`, `quality`, `resolution`,
+`protocol`, `index`, `star`, and the media (`title`, `year`, `seasonEpisode`). A part that resolves to nothing
+is dropped, so one config reads right for a movie and for an episode.
 
-- **`standard`** (active): name `Provider • S1E1 • Idioma • Servidor`; description
-  `Título (año) · S1E1 · Idioma · Servidor · Calidad`. `title` mirrors the language.
-- **`compact`**: episode only in `title` and the description, never in the name.
-- **`verbose`**: quality also inside the name, for a client that does not draw `quality`.
+The layout follows AnimES: what qualifies the row sits on top, what describes the source sits under it. Nuvio
+draws `name` on the first line and `quality` on the second, so the formatter's `line2` is what travels in the
+`quality` field.
 
-Switching is `DEFAULT_FORMATTER` in `formatters.js`; it changes every provider at once.
+- **`standard`** (active):
+  ```
+  ⭐ AnimeAV1 • S1E1
+     MP4Upload · Subtitulado · 1080p
+  ```
+  description: `One Piece (1999) · S1E1 · Subtitulado · MP4Upload · 1080p`
+- **`compact`**: everything on the first line, only the quality below.
+- **`verbose`**: quality also on the first line, resolution below.
 
-## Where each field comes from
+`languageTag` is the language unless it is Latino, the normal case in this catalogue and therefore noise. The
+star only appears on a stream whose quality was measured well (`variants.js` `best`).
 
-`provider`/`language`/`server` come from the resolver that produced the stream, `quality` and `resolution`
-are measured (HLS master `RESOLUTION`, or the mp4's `tkhd`), `protocol` says `hls` or `mp4`, and
-`seasonEpisode`/`title`/`year` are supplied by the provider's entry point through `applyContext`, because the
-resolver is nested deep inside `extractStreams` and does not know what was asked for.
+## Trade-off worth knowing
 
-## The star
-
-`⭐` prefixes the name of a stream that measured at the top of what this repo can prove: 1080p or better on
-an HLS variant, or a direct `.mp4` measured at 720p or better (a direct file is the source itself, not a
-rendition). It comes from `variants.js`'s `best` flag, so an unmeasured link never earns one — the star means
-"verified good", not "looks good". A part written `+star` glues to the following part instead of taking a
-separator of its own.
-
-## Known rough edge
-
-When nothing measurable is available the field says `Auto`, so the second line reads `Auto`. It is honest —
-nothing was measured — but noisy; suppressing it would mean sending an empty `quality`, which the client also
-uses for sorting.
+Because `line2` travels in the `quality` field, that field no longer holds a bare quality: a client that sorts
+or filters by it sees `MP4Upload · Subtitulado · 1080p`. The measured value is kept beside it in
+`measuredQuality` (and in `fields.quality`) for anything that needs the plain number.

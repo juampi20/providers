@@ -25,23 +25,29 @@ export const GROUP_SEPARATOR = ' \u00b7 ';
  * Los presets. Todos dejan la calidad fuera de `name`: el cliente ya la dibuja.
  */
 export const FORMATTERS = {
-    /** `Provider • S1E1 • Idioma • Servidor`, con la obra y el episodio en la descripción. */
+    /**
+     * Como AnimES: arriba el proveedor y el episodio, abajo el servidor con el idioma y la calidad.
+     * La segunda línea viaja en el campo `quality`, que es el que Nuvio dibuja debajo del nombre.
+     */
     standard: {
-        name: ['+star', 'provider', 'seasonEpisode', 'language', 'server'],
-        title: ['language'],
-        description: [['title', 'year'], ['seasonEpisode'], ['language', 'server', 'quality']]
+        name: ['+star', 'provider', 'seasonEpisode'],
+        line2: ['server', 'languageTag', 'quality'],
+        title: ['languageTag'],
+        description: [['title', 'year'], ['seasonEpisode'], ['languageTag', 'server', 'quality']]
     },
-    /** Sin episodio en el nombre: para un cliente que solo dibuja `name` y no quiere ruido. */
+    /** Todo en el nombre y la calidad sola abajo. */
     compact: {
-        name: ['provider', 'language', 'server'],
-        title: ['seasonEpisode'],
-        description: [['title', 'year'], ['seasonEpisode'], ['language', 'server', 'quality']]
+        name: ['+star', 'provider', 'seasonEpisode', 'languageTag', 'server'],
+        line2: ['quality'],
+        title: ['languageTag'],
+        description: [['title', 'year'], ['seasonEpisode'], ['languageTag', 'server', 'quality']]
     },
-    /** Con la calidad también en el nombre, para clientes que no dibujan `quality`. */
+    /** La calidad también arriba, para un cliente que no dibuja la segunda línea. */
     verbose: {
-        name: ['+star', 'provider', 'seasonEpisode', 'language', 'server', 'quality'],
-        title: ['language'],
-        description: [['title', 'year'], ['seasonEpisode'], ['language', 'server', 'resolution']]
+        name: ['+star', 'provider', 'seasonEpisode', 'languageTag', 'server', 'quality'],
+        line2: ['resolution'],
+        title: ['languageTag'],
+        description: [['title', 'year'], ['seasonEpisode'], ['languageTag', 'server', 'quality']]
     }
 };
 
@@ -101,10 +107,13 @@ function line(parts, fields) {
 export function formatStream(fields, name = DEFAULT_FORMATTER) {
     const formatter = FORMATTERS[name] || FORMATTERS[DEFAULT_FORMATTER];
     const description = (formatter.description || []).map((part) => line([part], fields)).filter(Boolean).join(GROUP_SEPARATOR);
+    // Lo que Nuvio dibuja en la segunda línea es el campo `quality`: ahí va la línea 2 del formatter.
+    const second = (formatter.line2 || []).map((part) => partValue(part, fields)).filter(Boolean).join(GROUP_SEPARATOR);
     return {
         name: line(formatter.name, fields),
         title: line(formatter.title, fields),
         description,
-        quality: fields.quality || 'Auto'
+        quality: second || fields.quality || 'Auto',
+        measuredQuality: fields.quality || 'Auto'
     };
 }

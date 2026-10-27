@@ -40,6 +40,8 @@ export function labeled(provider, language, server, found, context) {
             protocol: stream.protocol || '',
             // Prefijo visual para la mejor fuente medida de la lista.
             star: stream.best ? '⭐ ' : '',
+            // El idioma solo se muestra cuando no es latino: en un catálogo latino es el caso normal.
+            languageTag: language && language !== 'Latino' ? language : '',
             index: i + 1,
             title: (context && context.title) || '',
             year: (context && context.year) || '',
