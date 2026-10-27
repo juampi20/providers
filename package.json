@@ -6,8 +6,7 @@
     "build": "node build.js",
     "build:min": "node build.js --minify",
     "test": "npm run build && node --test",
-    "start": "node server.js",
-    "live": "node scripts/sololatino-live.js"
+    "start": "node server.js"
   },
   "devDependencies": {
     "crypto-js": "^4.2.0",

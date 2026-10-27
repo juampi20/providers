@@ -26,7 +26,7 @@ Personal provider repository for Nuvio.
    - `scraper.json` — la entrada del manifest (`id`, `name`, `description`, `version`, `supportedTypes`, …); se mergea sobre `scraper-defaults.json` y el `filename` se deriva.
 2. Lo compartido va a `src/_utils/`: `http.js`, `packed.js` (players empaquetados y resolvers), `quality.js`, `matcher.js` (títulos), `labels.js` (forma del stream y corte por idioma), `tmdb.js`, `jsunpack.js`, `useragent.js`.
 3. `npm run build` buildea a `providers/<name>.js` y regenera el `scrapers` de `manifest.json`.
-4. Agregá tests en `test/` con fixtures guardadas y un `scripts/<name>-live.js` contra el sitio real.
+4. Agregá tests en `test/` con fixtures guardadas del sitio real.
 
 `providers/*.js` y el bloque `scrapers` de `manifest.json` son salida de build: se edita `src/`, nunca ellos.
 
@@ -54,17 +54,15 @@ npm test                            # build, then the offline tests
 npm start                           # local server on :3000 for Nuvio's Plugin Tester
 ```
 
-Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; `npm test` y los scripts live cubren la lógica.
+Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; `npm test` cubre la lógica; para una comprobación suelta contra el sitio real, un `test.js` temporal en la raíz (como propone la guía) alcanza.
 
 El workflow completo de providers de Nuvio está vendorizado en [`docs/nuvio-provider-guide.md`](docs/nuvio-provider-guide.md) (copia de `autovalue/nuvio-plugins`, GPL-3.0) — es la referencia del contrato, y su encabezado anota en qué se diferencia este repo.
 
-Para los sitios reales:
+Para una comprobación ad-hoc contra el sitio real, un `test.js` temporal en la raíz:
 
-```sh
-npm run live -- tt0903747-1x01      # SoloLatino
-node scripts/hackstore-live.js el-origen-2010
-node scripts/cinecalidad-live.js amor-y-tesoro 2008
-node scripts/vimeus-live.js 27205 movie
+```js
+const { getStreams } = require('./providers/vimeus.js');
+getStreams('27205', 'movie').then(console.log);
 ```
 
 SoloLatino asks `embed69.org/video/<id>` for each title. That page redirects to the encrypted `/f/` page when the title is there, and otherwise lists the servers in plain HTML (The 100 is one such title). Each call returns a single language: embeds are grouped and resolved latino → castellano → subtitulado, and the first language that yields a playable link ends the search, so the others are never fetched. Streamwish links are read through vibuxer.com, which serves the same packed player as vidhide. Links are returned without probing them: Nuvio waits for every pending request before it shows a plugin's results, and a dead CDN can hang past its 60 s plugin limit. It never returns hls4: those segments carry a PNG header that Nuvio's player (libmpv) refuses. VOE is not supported: its mirrors ask for a human check.

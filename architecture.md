@@ -36,8 +36,7 @@ the way out.
 Both `providers/*.js` and the manifest's `scrapers` array are **build output**, and the output directory is
 the repo root so the manifest URL Nuvio already has does not move. Editing `providers/*.js` by hand is a
 dead end: `npm run build` overwrites them, and `npm test` builds before it tests, so the tests always run
-against what would ship. The `_test` export surface a provider exposes is what the tests and the live
-scripts call.
+against what would ship. The `_test` export surface a provider exposes is what the tests call.
 
 `server.js` (`npm start`) serves the repo over HTTP so a Nuvio *debug build* can load a provider or the
 manifest from `:3000` in its Plugin Tester — the loop that replaces pushing for every change.
@@ -82,7 +81,7 @@ contract shapes every provider:
 - Network access happens only inside `getStreams` and its helpers; HTML parsing functions are pure, so
   fixtures can drive them.
 - `module.exports` always exposes `getStreams` and `onSettings`, plus a `_test` object for the offline
-  tests and the live script.
+  tests.
 - The manifest entry is the source of truth for a provider's identity; a provider file that no manifest
   entry names is unreachable by Nuvio.
 
@@ -90,8 +89,8 @@ contract shapes every provider:
 
 `npm test` builds first and then runs `node --test` against saved fixtures — so the artifact under test is
 the one that would ship, and the run stays network-free: it catches parser regressions from site layout
-changes but not site-side outages. The per-provider live scripts skip TMDB and hit the real pages, the only
-local check that notices a source going dark.
+changes but not site-side outages: a source going dark is only visible in the Plugin Tester, or in a
+throwaway `test.js` that calls the provider against the real site.
 
 Neither of those runs on Hermes, so neither proves the provider loads in the app: a Node test can pass while
 the plugin fails on device (a Node-only module, an unsupported syntax, a top-level throw). The last gate is
