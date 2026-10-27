@@ -288,6 +288,24 @@ export async function resolveFastream(embedUrl) {
     return [{ url, headers: { 'User-Agent': BROWSER_UA, Referer: 'https://fastream.to/' } }];
 }
 
+
+/**
+ * zilla-networks (el "HLS" de animeav1): la página `/play/<hash>` da 403, pero el mismo hash servido como
+ * `/m3u8/<hash>` es una playlist HLS abierta, sin UA ni Referer. Se reescribe la ruta en vez de pedir nada.
+ */
+export async function resolveZilla(embedUrl) {
+    const url = String(embedUrl).replace('/play/', '/m3u8/');
+    return /\/m3u8\//.test(url) ? [{ url, headers: { 'User-Agent': BROWSER_UA } }] : [];
+}
+
+/** mp4upload: el player deja el mp4 en un `src:` del JS. */
+export async function resolveMp4upload(embedUrl) {
+    const html = await fetchBrowserText(embedUrl, embedUrl);
+    const file = /src\s*:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i.exec(html) || /(https?:\/\/[^"'\s]+\.mp4[^"'\s]*)/i.exec(html);
+    if (!file) return [];
+    return [{ url: file[1], headers: { 'User-Agent': BROWSER_UA, Referer: embedUrl } }];
+}
+
 /**
  * Varios catálogos entregan `embedshortener.co/e/<jwt>` en vez del embed real: el payload lleva el host
  * verdadero, así que desenvolverlo convierte un host opaco en voe/vidhide/streamwish.
@@ -342,6 +360,8 @@ export function resolverFor(embedUrl) {
     if (host.indexOf('goodstream') >= 0) return { key: 'goodstream', server: 'GoodStream', resolve: resolveGoodstream, dynamic: true };
     if (host.indexOf('uqload') >= 0 || host.indexOf('oneupload') >= 0) return { key: 'uqload', server: 'Uqload', resolve: resolveUqload, dynamic: true };
     if (host.indexOf('audinifer') >= 0) return { key: 'audinifer', server: 'Audinifer', resolve: resolveAudinifer, dynamic: true };
+    if (/zilla-networks/.test(host)) return { key: 'zilla', server: 'HLS', resolve: resolveZilla };
+    if (/mp4upload/.test(host)) return { key: 'mp4upload', server: 'MP4Upload', resolve: resolveMp4upload, dynamic: true };
     if (/streamtape/.test(host)) return { key: 'streamtape', server: 'StreamTape', resolve: resolveStreamtape, dynamic: true };
     if (/fastream/.test(host)) return { key: 'fastream', server: 'Fastream', resolve: resolveFastream, dynamic: true };
     if (host.indexOf('vimeus') >= 0) return { key: 'vimeus', server: 'Vimeus', resolve: resolveVimeusEmbed, dynamic: true };

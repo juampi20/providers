@@ -564,6 +564,20 @@ function resolveFastream(embedUrl) {
     return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: "https://fastream.to/" } }];
   });
 }
+function resolveZilla(embedUrl) {
+  return __async(this, null, function* () {
+    const url = String(embedUrl).replace("/play/", "/m3u8/");
+    return /\/m3u8\//.test(url) ? [{ url, headers: { "User-Agent": BROWSER_UA } }] : [];
+  });
+}
+function resolveMp4upload(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const file = /src\s*:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i.exec(html) || /(https?:\/\/[^"'\s]+\.mp4[^"'\s]*)/i.exec(html);
+    if (!file) return [];
+    return [{ url: file[1], headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+  });
+}
 function unwrapEmbedShortener(url) {
   if (!/embedshortener\.|fkplayer\./i.test(String(url || ""))) return null;
   const token = String(url).split("/e/").pop().split(/[?#]/)[0];
@@ -596,6 +610,8 @@ function resolverFor(embedUrl) {
   if (host.indexOf("goodstream") >= 0) return { key: "goodstream", server: "GoodStream", resolve: resolveGoodstream, dynamic: true };
   if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
   if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
+  if (/zilla-networks/.test(host)) return { key: "zilla", server: "HLS", resolve: resolveZilla };
+  if (/mp4upload/.test(host)) return { key: "mp4upload", server: "MP4Upload", resolve: resolveMp4upload, dynamic: true };
   if (/streamtape/.test(host)) return { key: "streamtape", server: "StreamTape", resolve: resolveStreamtape, dynamic: true };
   if (/fastream/.test(host)) return { key: "fastream", server: "Fastream", resolve: resolveFastream, dynamic: true };
   if (host.indexOf("vimeus") >= 0) return { key: "vimeus", server: "Vimeus", resolve: resolveVimeusEmbed, dynamic: true };

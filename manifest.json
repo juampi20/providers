@@ -4,6 +4,30 @@
   "description": "Generated providers for Nuvio",
   "scrapers": [
     {
+      "id": "animeav1",
+      "name": "AnimeAV1",
+      "description": "Anime en Latino y subtitulado vía animeav1.com (HLS, VOE, StreamTape, MP4Upload).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "tv",
+        "movie"
+      ],
+      "filename": "providers/animeav1.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=animeav1.com&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
       "id": "areshd",
       "name": "AresHD",
       "description": "Movies and series in Latin Spanish via areshd.com.",
