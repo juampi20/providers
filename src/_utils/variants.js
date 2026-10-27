@@ -10,7 +10,8 @@
 import { fetchBrowserText } from './http.js';
 import { resolveUrl } from './packed.js';
 import { inferQuality } from './quality.js';
-import { mp4Resolution, mp4Size, sizeLabel, heightLabel } from './mp4.js';
+import { mp4Resolution, probeDirect, sizeLabel, heightLabel } from './mp4.js';
+import { cachedVerdict, rememberVerdict } from './verify.js';
 
 /** Alto de la variante al nombre que se muestra. */
 const labelForHeight = heightLabel;
@@ -25,11 +26,16 @@ export function isDirectFile(url) {
  * @param {string} url
  */
 export async function bestPlayable(url) {
+    const cached = cachedVerdict('hls:' + url);
+    if (cached && !cached.alive) return { url, quality: 'Auto', height: 0, dead: true };
+
     let body;
     try {
         body = await fetchBrowserText(url);
+        rememberVerdict('hls:' + url, { alive: true });
     } catch (e) {
-        return { url, quality: 'Auto', height: 0 };
+        rememberVerdict('hls:' + url, { alive: false });
+        return { url, quality: 'Auto', height: 0, dead: true };
     }
 
     if (body.indexOf('#EXT-X-STREAM-INF') < 0) {
@@ -66,12 +72,15 @@ export async function bestPlayable(url) {
  * @param {Array<{url: string, headers?: object}>} found
  */
 export async function withRealQuality(found) {
-    return Promise.all(found.map(async (stream) => {
+    const resolved = await Promise.all(found.map(async (stream) => {
         if (isDirectFile(stream.url)) {
             const size = await mp4Resolution(stream.url, stream.headers).catch(() => null);
             // Sin `Range` (el runtime del cliente puede ignorarlo) no hay resolución: se mide el tamaño.
-            const bytes = size ? 0 : await mp4Size(stream.url, stream.headers).catch(() => 0);
+            // El HEAD, además, dice si el archivo vive.
+            const probe = size ? { alive: true, bytes: 0 } : await probeDirect(stream.url, stream.headers);
+            const bytes = probe.bytes;
             return {
+                dead: !probe.alive,
                 url: stream.url,
                 headers: stream.headers,
                 quality: size ? labelForHeight(size.height) : 'Direct',
@@ -84,6 +93,7 @@ export async function withRealQuality(found) {
         }
         const resolved = await bestPlayable(stream.url);
         return {
+            dead: !!resolved.dead,
             url: resolved.url,
             headers: stream.headers,
             // Sin resolución legible, el primer token es la clase: Web.
@@ -95,4 +105,6 @@ export async function withRealQuality(found) {
             best: !!resolved.height && resolved.height >= 1080
         };
     }));
+    // Lo que no respondió no se ofrece: una fila muerta cuesta más que su ausencia.
+    return resolved.filter((stream) => !stream.dead);
 }

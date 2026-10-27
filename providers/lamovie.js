@@ -399,6 +399,25 @@ function inferQuality(url, server) {
   return labelled ? labelled[1] + "p" : "Auto";
 }
 
+// src/_utils/verify.js
+var TTL = 30 * 60 * 1e3;
+var MAX = 300;
+var CACHE = {};
+function cachedVerdict(url) {
+  const entry = CACHE[url];
+  if (!entry) return void 0;
+  if (Date.now() > entry.expires) {
+    delete CACHE[url];
+    return void 0;
+  }
+  return entry.value;
+}
+function rememberVerdict(url, verdict) {
+  const keys = Object.keys(CACHE);
+  if (keys.length >= MAX) delete CACHE[keys[0]];
+  CACHE[url] = { value: verdict, expires: Date.now() + TTL };
+}
+
 // src/_utils/mp4.js
 var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 var WINDOW = 65536;
@@ -448,16 +467,22 @@ function mp4Resolution(url, headers) {
     return null;
   });
 }
-function mp4Size(url, headers) {
+function probeDirect(url, headers) {
   return __async(this, null, function* () {
+    const cached = cachedVerdict("head:" + url);
+    if (cached) return cached;
+    let verdict = { alive: false, bytes: 0 };
     try {
       const response = yield fetch(url, { method: "HEAD", headers: Object.assign({ "User-Agent": UA }, headers || {}) });
-      if (!response.ok) return 0;
-      const length = parseInt(response.headers.get("content-length") || "0", 10);
-      return length > 0 ? length : 0;
+      if (response.ok) {
+        const length = parseInt(response.headers.get("content-length") || "0", 10);
+        verdict = { alive: true, bytes: length > 0 ? length : 0 };
+      }
     } catch (e) {
-      return 0;
+      verdict = { alive: false, bytes: 0 };
     }
+    rememberVerdict("head:" + url, verdict);
+    return verdict;
   });
 }
 function sizeLabel(bytes) {
@@ -473,11 +498,15 @@ function isDirectFile(url) {
 }
 function bestPlayable(url) {
   return __async(this, null, function* () {
+    const cached = cachedVerdict("hls:" + url);
+    if (cached && !cached.alive) return { url, quality: "Auto", height: 0, dead: true };
     let body;
     try {
       body = yield fetchBrowserText(url);
+      rememberVerdict("hls:" + url, { alive: true });
     } catch (e) {
-      return { url, quality: "Auto", height: 0 };
+      rememberVerdict("hls:" + url, { alive: false });
+      return { url, quality: "Auto", height: 0, dead: true };
     }
     if (body.indexOf("#EXT-X-STREAM-INF") < 0) {
       return { url, quality: inferQuality(url), height: 0 };
@@ -501,11 +530,13 @@ function bestPlayable(url) {
 }
 function withRealQuality(found) {
   return __async(this, null, function* () {
-    return Promise.all(found.map((stream) => __async(null, null, function* () {
+    const resolved = yield Promise.all(found.map((stream) => __async(null, null, function* () {
       if (isDirectFile(stream.url)) {
         const size = yield mp4Resolution(stream.url, stream.headers).catch(() => null);
-        const bytes = size ? 0 : yield mp4Size(stream.url, stream.headers).catch(() => 0);
+        const probe = size ? { alive: true, bytes: 0 } : yield probeDirect(stream.url, stream.headers);
+        const bytes = probe.bytes;
         return {
+          dead: !probe.alive,
           url: stream.url,
           headers: stream.headers,
           quality: size ? labelForHeight(size.height) : "Direct",
@@ -516,19 +547,21 @@ function withRealQuality(found) {
           best: !!size && size.height >= 720
         };
       }
-      const resolved = yield bestPlayable(stream.url);
+      const resolved2 = yield bestPlayable(stream.url);
       return {
-        url: resolved.url,
+        dead: !!resolved2.dead,
+        url: resolved2.url,
         headers: stream.headers,
         // Sin resolución legible, el primer token es la clase: Web.
-        quality: resolved.height ? resolved.quality : "Web",
-        resolution: resolved.height ? "x" + resolved.height : "",
+        quality: resolved2.height ? resolved2.quality : "Web",
+        resolution: resolved2.height ? "x" + resolved2.height : "",
         size: "",
         protocol: "hls",
         kind: "web",
-        best: !!resolved.height && resolved.height >= 1080
+        best: !!resolved2.height && resolved2.height >= 1080
       };
     })));
+    return resolved.filter((stream) => !stream.dead);
   });
 }
 

@@ -27,6 +27,11 @@ chains rather than `async`/`await`.
 - **Playable links.** `packedLinks` unpacks the player and keeps only `hls2`/`hls3` — `hls4` segments carry
   a PNG header libmpv refuses — and it never probes a link, because Nuvio waits on every pending request
   (a recorded non-goal). `resolveStreamWish` is `packedLinks` behind the `vibuxer.com` rewrite.
+- **Liveness.** `verify.js` acts on requests the resolvers already make: an HLS stream is verified by the
+  manifest fetch in `variants.js`, a direct file by the HEAD that measures its size. A stream whose own request
+  failed is dropped instead of offered, and both verdicts are cached for 30 minutes — a dead CDN costs one
+  request per session, not one per search. No stream is probed beyond that, and nothing waits on a link that
+  has not already been fetched.
 - **Quality.** `variants.js` reads an HLS master once and returns its highest `RESOLUTION` variant, labelling
   the stream with that real height. The masters these CDNs hand out list variants lowest first
   (`852x480 → 1280x720 → 1920x1080`), so handing the master over and guessing a label from the URL's tier

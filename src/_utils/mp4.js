@@ -1,3 +1,5 @@
+import { cachedVerdict, rememberVerdict } from './verify.js';
+
 /**
  * Resolution of a direct `.mp4`, read from its own header.
  *
@@ -76,14 +78,31 @@ export async function mp4Resolution(url, headers) {
  * @param {object} [headers]
  */
 export async function mp4Size(url, headers) {
+    const probe = await probeDirect(url, headers);
+    return probe.bytes;
+}
+
+/**
+ * Un solo HEAD que sirve para dos cosas: dice si el archivo vive y cuánto pesa. Se cachea el veredicto,
+ * porque un host muerto no tiene por qué costar un request en cada búsqueda.
+ * @param {string} url
+ * @param {object} [headers]
+ */
+export async function probeDirect(url, headers) {
+    const cached = cachedVerdict('head:' + url);
+    if (cached) return cached;
+    let verdict = { alive: false, bytes: 0 };
     try {
         const response = await fetch(url, { method: 'HEAD', headers: Object.assign({ 'User-Agent': UA }, headers || {}) });
-        if (!response.ok) return 0;
-        const length = parseInt(response.headers.get('content-length') || '0', 10);
-        return length > 0 ? length : 0;
+        if (response.ok) {
+            const length = parseInt(response.headers.get('content-length') || '0', 10);
+            verdict = { alive: true, bytes: length > 0 ? length : 0 };
+        }
     } catch (e) {
-        return 0;
+        verdict = { alive: false, bytes: 0 };
     }
+    rememberVerdict('head:' + url, verdict);
+    return verdict;
 }
 
 /** @param {number} bytes */
