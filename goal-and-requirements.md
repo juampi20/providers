@@ -41,8 +41,8 @@ providers is a deliberate goal, so the shape stays per-provider-file rather than
 - **Latino first** — a provider resolves one language per call: it tries Latino, then Castellano, then
   Subtitulado, and stops at the first that yields a playable link. Nothing is fetched for the languages
   after it.
-- **Verification** — offline tests run a provider's parsers against saved HTML fixtures; a live script
-  exercises a provider against the real sites.
+- **Verification** — a provider is proved in Nuvio's Plugin Tester, against the real sites, on the same
+  engine the app ships. The repo keeps no test suite.
 
 ## Non-goals
 
@@ -65,4 +65,5 @@ providers is a deliberate goal, so the shape stays per-provider-file rather than
   guessed codec, audio or HDR.
 - Nuvio owns the plugin's runtime. Providers read Nuvio's injected globals instead of declaring them, and
   keep a fallback path that works on builds that inject nothing.
-- A provider's parsers are pure functions over HTML, so saved fixtures can test them without network access.
+- A provider's parsers are pure functions over HTML, so they can be driven from a throwaway script without
+  touching the network.

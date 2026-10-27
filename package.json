@@ -5,7 +5,6 @@
   "scripts": {
     "build": "node build.js",
     "build:min": "node build.js --minify",
-    "test": "npm run build && node --test",
     "start": "node server.js"
   },
   "devDependencies": {

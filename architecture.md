@@ -35,8 +35,7 @@ the way out.
 
 Both `providers/*.js` and the manifest's `scrapers` array are **build output**, and the output directory is
 the repo root so the manifest URL Nuvio already has does not move. Editing `providers/*.js` by hand is a
-dead end: `npm run build` overwrites them, and `npm test` builds before it tests, so the tests always run
-against what would ship. The `_test` export surface a provider exposes is what the tests call.
+dead end: `npm run build` overwrites them, so edit `src/` and rebuild.
 
 `server.js` (`npm start`) serves the repo over HTTP so a Nuvio *debug build* can load a provider or the
 manifest from `:3000` in its Plugin Tester — the loop that replaces pushing for every change.
@@ -78,24 +77,25 @@ contract shapes every provider:
   site-derived slug needs TMDB metadata, declares the settings field, and returns `[]` with a warning when
   no key is available.
 - Providers never declare Nuvio's injected globals.
-- Network access happens only inside `getStreams` and its helpers; HTML parsing functions are pure, so
-  fixtures can drive them.
-- `module.exports` always exposes `getStreams` and `onSettings`, plus a `_test` object for the offline
-  tests.
+- Network access happens only inside `getStreams` and its helpers; page parsing functions are pure, so a
+  throwaway script can drive them against saved or live HTML.
+- A provider exports `getStreams` (and `onSettings` when it needs a key), plus a `_test` object with its
+  parser functions for ad-hoc checks.
 - The manifest entry is the source of truth for a provider's identity; a provider file that no manifest
   entry names is unreachable by Nuvio.
 
 ## Verification
 
-`npm test` builds first and then runs `node --test` against saved fixtures — so the artifact under test is
-the one that would ship, and the run stays network-free: it catches parser regressions from site layout
-changes but not site-side outages: a source going dark is only visible in the Plugin Tester, or in a
-throwaway `test.js` that calls the provider against the real site.
+The repo keeps no test suite; verification is the build and the app.
 
-Neither of those runs on Hermes, so neither proves the provider loads in the app: a Node test can pass while
-the plugin fails on device (a Node-only module, an unsupported syntax, a top-level throw). The last gate is
-Nuvio's Plugin Tester against `npm start`, which runs the same engine as the shipped app— provider changes
-are not done until they pass there.
+- `npm run build` proves the sources bundle and the manifest matches `src/` — nothing more.
+- Nuvio's Plugin Tester (`npm start`, then the debug build's Developer Section) runs the provider on the
+  same Hermes as the shipped app, so it is the gate: a Node run can pass while the plugin fails on device
+  (a Node-only module, an unsupported syntax, a top-level throw).
+- A throwaway `test.js` at the root covers anything in between, and is gitignored.
+
+The cost is honest: a site layout change or a dead CDN is only noticed when someone runs the provider
+there, not by a green suite.
 
 ## Providers
 

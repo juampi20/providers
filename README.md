@@ -26,7 +26,7 @@ Personal provider repository for Nuvio.
    - `scraper.json` — la entrada del manifest (`id`, `name`, `description`, `version`, `supportedTypes`, …); se mergea sobre `scraper-defaults.json` y el `filename` se deriva.
 2. Lo compartido va a `src/_utils/`: `http.js`, `packed.js` (players empaquetados y resolvers), `quality.js`, `matcher.js` (títulos), `labels.js` (forma del stream y corte por idioma), `tmdb.js`, `jsunpack.js`, `useragent.js`.
 3. `npm run build` buildea a `providers/<name>.js` y regenera el `scrapers` de `manifest.json`.
-4. Agregá tests en `test/` con fixtures guardadas del sitio real.
+4. Probá el provider en el Plugin Tester (o con un `test.js` temporal) antes de dar por buena la versión.
 
 `providers/*.js` y el bloque `scrapers` de `manifest.json` son salida de build: se edita `src/`, nunca ellos.
 
@@ -50,11 +50,10 @@ Cada provider vive en su carpeta: `src/<provider>/{index.js, extractor.js, log.j
 npm install
 npm run build                       # src/<provider>/ -> providers/*.js + manifest.json (readable output)
 npm run build:min                   # same, minified, for a release
-npm test                            # build, then the offline tests
 npm start                           # local server on :3000 for Nuvio's Plugin Tester
 ```
 
-Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; `npm test` cubre la lógica; para una comprobación suelta contra el sitio real, un `test.js` temporal en la raíz (como propone la guía) alcanza.
+Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; para una comprobación suelta contra el sitio real, un `test.js` temporal en la raíz (como propone la guía) alcanza.
 
 El workflow completo de providers de Nuvio está vendorizado en [`docs/nuvio-provider-guide.md`](docs/nuvio-provider-guide.md) (copia de `autovalue/nuvio-plugins`, GPL-3.0) — es la referencia del contrato, y su encabezado anota en qué se diferencia este repo.
 

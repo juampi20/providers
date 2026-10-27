@@ -47,7 +47,5 @@ chains rather than `async`/`await`.
 
 ## Testing
 
-Pure helpers are tested directly in `test/core.test.js` (title similarity, the matcher's threshold and year
-veto, slug variants, splitting `Title (year)`); the network-bound ones are covered through the provider
-tests that drive them with real fixtures (`unpack` and the resolvers via the vidhide/vimeos fixtures, the
-language cut via the two-language page tests).
+El repo no mantiene una suite. Estos módulos se comprueban contra el sitio real desde el Plugin Tester, o con
+un `test.js` temporal en la raíz que llame a un provider y mire lo que devuelve.

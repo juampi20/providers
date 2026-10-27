@@ -1,1 +1,6 @@
 node_modules/
+
+# Comprobaciones locales, no se versionan
+test/
+test.js
+_test_*.js
