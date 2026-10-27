@@ -341,11 +341,20 @@ function resolveFirstLanguage(groups, index, resolveEmbed) {
     });
 }
 
+// Nuvio shows two lines per stream. Following latinuvio's split: the `name` carries what qualifies the
+// source (provider, quality, server) and the `title` carries the language. Quality is uppercased in the name
+// and dropped from it when unknown — `AUTO` in every row would be noise, and we never invent a value. The
+// numeric suffix that separates two links from one server goes in the title, which is the only slot left.
+const LABEL_SEPARATOR = ' \u2022 ';
+
 function labeled(name, language, server, found) {
     return found.map(function (s, i) {
+        const parts = [name];
+        if (s.quality && s.quality !== 'Auto') parts.push(String(s.quality).toUpperCase());
+        if (server) parts.push(server);
         return {
-            name: name,
-            title: language + ' - ' + server + (i ? ' ' + (i + 1) : ''),
+            name: parts.join(LABEL_SEPARATOR),
+            title: language + (i ? ' ' + (i + 1) : ''),
             url: s.url,
             quality: s.quality || 'Auto',
             headers: s.headers

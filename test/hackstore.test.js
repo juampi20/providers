@@ -110,9 +110,9 @@ test('getStreams resolves only the first language that works', () => {
     return withRoutes(routes, () => getStreams('27205', 'movie')).then(({ result, calls }) => {
         delete global.TMDB_API_KEY;
         assert.ok(result.length > 0);
-        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Latino']);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' ')[0]))], ['Latino']);
         assert.deepStrictEqual(calls.filter((u) => u.indexOf('embed-sub') >= 0), []);
-        assert.deepStrictEqual(result.map((s) => s.name + '/' + s.quality), ['HackStore/720p']);
+        assert.deepStrictEqual(result.map((s) => s.name + '/' + s.quality + '/' + s.title), ['HackStore • 720P • Vimeos/720p/Latino']);
     });
 });
 
@@ -130,6 +130,6 @@ test('getStreams falls through to the next language when the first yields no lin
     ];
     return withRoutes(routes, () => getStreams('27205', 'movie')).then(({ result }) => {
         delete global.TMDB_API_KEY;
-        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Subtitulado']);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' ')[0]))], ['Subtitulado']);
     });
 });

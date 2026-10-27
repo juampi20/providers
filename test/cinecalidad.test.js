@@ -103,7 +103,7 @@ test('getStreams keeps only the resolvable players, labelled Latino, with qualit
     return withRoutes(routes, () => getStreams('10528', 'movie')).then(({ result, calls }) => {
         delete global.TMDB_API_KEY;
         assert.strictEqual(result.length, 1);
-        assert.deepStrictEqual(result.map((s) => s.name + ' | ' + s.title + ' | ' + s.quality), ['CineCalidad | Latino - Vimeos | 720p']);
+        assert.deepStrictEqual(result.map((s) => s.name + ' | ' + s.title + ' | ' + s.quality), ['CineCalidad • 720P • Vimeos | Latino | 720p']);
         assert.match(result[0].url, /master\.m3u8\?/);
         assert.deepStrictEqual(calls.filter((u) => /embed69|vibuxer/.test(u)), []);
     });

@@ -156,7 +156,7 @@ test('getStreams cuts at latino and never fetches the other languages', () => {
     return withRoutes(routes, () => getStreams('1396', 'tv', 1, 1)).then(({ result, calls }) => {
         delete global.TMDB_API_KEY;
         assert.ok(result.length > 0);
-        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Latino']);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' ')[0]))], ['Latino']);
         assert.strictEqual(calls.filter((u) => u.indexOf('/v/lat') >= 0).length, 1);
         assert.deepStrictEqual(calls.filter((u) => u.indexOf('/v/sub') >= 0), []);
     });
@@ -173,7 +173,7 @@ test('getStreams falls through to the next language when latino yields no link',
     return withRoutes(routes, () => getStreams('1396', 'tv', 1, 1)).then(({ result, calls }) => {
         delete global.TMDB_API_KEY;
         assert.ok(result.length > 0);
-        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Subtitulado']);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' ')[0]))], ['Subtitulado']);
         assert.strictEqual(calls.filter((u) => u.indexOf('/v/sub') >= 0).length, 1);
     });
 });
