@@ -48,6 +48,8 @@ npm start                           # local server on :3000 for Nuvio's Plugin T
 
 Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; `npm test` y los scripts live cubren la lógica.
 
+El workflow completo de providers de Nuvio está vendorizado en [`docs/nuvio-provider-guide.md`](docs/nuvio-provider-guide.md) (copia de `autovalue/nuvio-plugins`, GPL-3.0) — es la referencia del contrato, y su encabezado anota en qué se diferencia este repo.
+
 Para los sitios reales:
 
 ```sh

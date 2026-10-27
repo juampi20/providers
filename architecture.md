@@ -37,6 +37,11 @@ provider exposes is what the tests and the live scripts call.
 `server.js` (`npm start`) serves the repo over HTTP so a Nuvio *debug build* can load a provider or the
 manifest from `:3000` in its Plugin Tester — the loop that replaces pushing for every change.
 
+The external reference for Nuvio's plugin contract is vendored at
+[`docs/nuvio-provider-guide.md`](../docs/nuvio-provider-guide.md) (GPL-3.0, `autovalue/nuvio-plugins`). It
+describes the guide's own layout, which differs from ours in the build command and the provider directory
+shape; where they disagree, this spec and the code win, and the vendored header says so.
+
 ## The Nuvio runtime contract
 
 Nuvio executes a provider inside QuickJS, wrapped in a function, and expects `getStreams` back. The
