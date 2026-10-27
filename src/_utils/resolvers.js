@@ -9,6 +9,7 @@
 import JsUnpacker from './jsunpack.js';
 import { BROWSER_UA, fetchBrowserText, browserHeaders } from './http.js';
 import { between, resolveUrl, hostOf, vibuxerUrl, playableLinks } from './packed.js';
+import { withRealQuality } from './variants.js';
 
 /** @param {string} html */
 function unpack(html) {
@@ -51,38 +52,15 @@ export async function resolveStreamWish(embedUrl) {
 }
 
 /**
- * vimeos: el master trae dos variantes y, en muchos títulos, un grupo de audio que el player puede no saber
- * enganchar (audio sin imagen). Se devuelve la variante de mayor calidad, que trae audio y video muxados.
+ * vimeos: el player empaquetado deja el master del CDN. La variante la elige `withRealQuality`, que además
+ * lee la resolución real en vez de adivinarla por la letra del tier.
  */
 export async function resolveVimeos(embedUrl) {
     const html = await fetchBrowserText(embedUrl, 'https://vimeos.net/');
     const script = unpack(html) || html;
     const m = /["']([^"']+\.m3u8[^"']*)['"]/i.exec(script);
     if (!m) return [];
-    const master = resolveUrl(m[1], embedUrl);
-    const headers = { 'User-Agent': BROWSER_UA };
-    return [{ url: await bestVariant(master, headers), headers }];
-}
-
-/** La playlist de mayor bandwidth de un master, o el master si no hay nada que elegir. */
-async function bestVariant(masterUrl, headers) {
-    let body;
-    try {
-        body = await fetchBrowserText(masterUrl);
-    } catch (e) {
-        return masterUrl;
-    }
-    const lines = body.split('\n');
-    const variants = [];
-    lines.forEach((line, i) => {
-        if (line.indexOf('#EXT-X-STREAM-INF') !== 0) return;
-        const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
-        const uri = lines.slice(i + 1).filter((l) => l && l.charAt(0) !== '#')[0];
-        if (uri) variants.push({ bandwidth: bandwidth ? parseInt(bandwidth[1], 10) : 0, url: resolveUrl(uri.trim(), masterUrl) });
-    });
-    if (variants.length < 2) return masterUrl;
-    variants.sort((a, b) => b.bandwidth - a.bandwidth);
-    return variants[0].url;
+    return [{ url: resolveUrl(m[1], embedUrl), headers: { 'User-Agent': BROWSER_UA } }];
 }
 
 // ── players que exponen el link en el HTML ────────────────────────────────────────────────────────────────
@@ -348,8 +326,19 @@ export const RESOLVER_HOSTS = {
     dood: /doodstream|dood\.|ds2play/
 };
 
-/** Resolver para un embed, o null cuando el host no está soportado. */
+/**
+ * El resolver de un embed, con la salida ya refinada: cada link pasa por `withRealQuality`, así que lo que
+ * devuelve un provider trae la mejor variante y su resolución real. Null cuando el host no está soportado.
+ */
 export function resolverFor(embedUrl) {
+    const base = baseResolverFor(embedUrl);
+    if (!base) return null;
+    return Object.assign({}, base, {
+        resolve: async (url) => withRealQuality(await base.resolve(url))
+    });
+}
+
+function baseResolverFor(embedUrl) {
     const host = hostOf(embedUrl);
     const shortener = unwrapEmbedShortener(embedUrl);
     if (shortener) return resolverFor(shortener);

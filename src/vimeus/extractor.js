@@ -84,7 +84,6 @@ async function streamsFrom(embedUrl) {
     if (!resolver) return [];
     try {
         const found = await resolver.resolve(embedUrl);
-        found.forEach((stream) => { stream.quality = inferQuality(stream.url, resolver.key); });
         return labeled(PROVIDER_NAME, LANGUAGE, resolver.server, found);
     } catch (e) {
         return [];

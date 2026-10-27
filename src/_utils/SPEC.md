@@ -27,8 +27,12 @@ chains rather than `async`/`await`.
 - **Playable links.** `packedLinks` unpacks the player and keeps only `hls2`/`hls3` — `hls4` segments carry
   a PNG header libmpv refuses — and it never probes a link, because Nuvio waits on every pending request
   (a recorded non-goal). `resolveStreamWish` is `packedLinks` behind the `vibuxer.com` rewrite.
-- **Quality.** `inferQuality` reads the tier list out of a multi-quality master URL, so a label costs no
-  request; anything unrecognised is `Auto` rather than a lie.
+- **Quality.** `variants.js` reads an HLS master once and returns its highest `RESOLUTION` variant, labelling
+  the stream with that real height. The masters these CDNs hand out list variants lowest first
+  (`852x480 → 1280x720 → 1920x1080`), so handing the master over and guessing a label from the URL's tier
+  letters produced rows that said 1080p while the player showed 480p. A link that is already a media playlist
+  keeps whatever its URL says, and `Auto` when it says nothing. Costs one text request per stream, no segment
+  is ever touched, and `resolverFor` applies it to every resolver so no provider can skip it.
 - **The language cut.** `groupByLanguage` + `resolveFirstLanguage` implement the recorded rule — one
   language per call, in the order the site file passes, stopping at the first that resolves — so a site
   cannot accidentally reintroduce "fetch everything".

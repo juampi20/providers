@@ -339,6 +339,73 @@ function playableLinks(links, embedUrl) {
   return ["hls2", "hls3"].filter((k) => links[k]).map((k) => resolveUrl(links[k], embedUrl));
 }
 
+// src/_utils/quality.js
+var TIER_PRIORITY = ["x", "o", "h", "n", "l"];
+var TIERS = {
+  vimeos: { x: "1080p", o: "1080p", h: "720p", n: "480p", l: "360p" },
+  streamwish: { x: "1080p", o: "1080p", h: "1080p", n: "720p", l: "480p" },
+  vidhide: { x: "1080p", o: "1080p", h: "720p", n: "480p", l: "360p" }
+};
+function inferQuality(url, server) {
+  const tiers = TIERS[server] || {};
+  const set = /_,([a-z,]+),\.urlset/.exec(url);
+  if (set) {
+    const available = set[1].split(",");
+    for (let i = 0; i < TIER_PRIORITY.length; i++) {
+      const tier = TIER_PRIORITY[i];
+      if (available.indexOf(tier) >= 0 && tiers[tier]) return tiers[tier];
+    }
+  }
+  const labelled = /[_\-/](\d{3,4})p/.exec(url);
+  return labelled ? labelled[1] + "p" : "Auto";
+}
+
+// src/_utils/variants.js
+function labelForHeight(height) {
+  if (height >= 2e3) return "4K";
+  if (height >= 1e3) return "1080p";
+  if (height >= 700) return "720p";
+  if (height >= 460) return "480p";
+  if (height > 0) return "360p";
+  return "Auto";
+}
+function bestPlayable(url) {
+  return __async(this, null, function* () {
+    let body;
+    try {
+      body = yield fetchBrowserText(url);
+    } catch (e) {
+      return { url, quality: "Auto" };
+    }
+    if (body.indexOf("#EXT-X-STREAM-INF") < 0) {
+      return { url, quality: inferQuality(url) };
+    }
+    const lines = body.split("\n");
+    let best = null;
+    lines.forEach((line, i) => {
+      if (line.indexOf("#EXT-X-STREAM-INF") !== 0) return;
+      const uri = lines.slice(i + 1).filter((next) => next && next.charAt(0) !== "#")[0];
+      if (!uri) return;
+      const resolution = /RESOLUTION=(\d+)x(\d+)/.exec(line);
+      const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
+      const height = resolution ? parseInt(resolution[2], 10) : 0;
+      const bitrate = bandwidth ? parseInt(bandwidth[1], 10) : 0;
+      const score = height * 1e6 + bitrate;
+      if (!best || score > best.score) best = { url: resolveUrl(uri.trim(), url), height, score };
+    });
+    if (!best) return { url, quality: "Auto" };
+    return { url: best.url, quality: labelForHeight(best.height) };
+  });
+}
+function withRealQuality(found) {
+  return __async(this, null, function* () {
+    return Promise.all(found.map((stream) => __async(null, null, function* () {
+      const resolved = yield bestPlayable(stream.url);
+      return { url: resolved.url, headers: stream.headers, quality: resolved.quality };
+    })));
+  });
+}
+
 // src/_utils/resolvers.js
 function unpack(html) {
   const unpacker = new JsUnpacker(html);
@@ -380,30 +447,7 @@ function resolveVimeos(embedUrl) {
     const script = unpack(html) || html;
     const m = /["']([^"']+\.m3u8[^"']*)['"]/i.exec(script);
     if (!m) return [];
-    const master = resolveUrl(m[1], embedUrl);
-    const headers = { "User-Agent": BROWSER_UA };
-    return [{ url: yield bestVariant(master, headers), headers }];
-  });
-}
-function bestVariant(masterUrl, headers) {
-  return __async(this, null, function* () {
-    let body;
-    try {
-      body = yield fetchBrowserText(masterUrl);
-    } catch (e) {
-      return masterUrl;
-    }
-    const lines = body.split("\n");
-    const variants = [];
-    lines.forEach((line, i) => {
-      if (line.indexOf("#EXT-X-STREAM-INF") !== 0) return;
-      const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
-      const uri = lines.slice(i + 1).filter((l) => l && l.charAt(0) !== "#")[0];
-      if (uri) variants.push({ bandwidth: bandwidth ? parseInt(bandwidth[1], 10) : 0, url: resolveUrl(uri.trim(), masterUrl) });
-    });
-    if (variants.length < 2) return masterUrl;
-    variants.sort((a, b) => b.bandwidth - a.bandwidth);
-    return variants[0].url;
+    return [{ url: resolveUrl(m[1], embedUrl), headers: { "User-Agent": BROWSER_UA } }];
   });
 }
 function resolveGoodstream(embedUrl) {
@@ -608,6 +652,15 @@ function unwrapEmbedShortener(url) {
 var VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
 var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|bysedika|bysevipa/;
 function resolverFor(embedUrl) {
+  const base = baseResolverFor(embedUrl);
+  if (!base) return null;
+  return Object.assign({}, base, {
+    resolve: (url) => __async(null, null, function* () {
+      return withRealQuality(yield base.resolve(url));
+    })
+  });
+}
+function baseResolverFor(embedUrl) {
   const host = hostOf(embedUrl);
   const shortener = unwrapEmbedShortener(embedUrl);
   if (shortener) return resolverFor(shortener);
@@ -626,27 +679,6 @@ function resolverFor(embedUrl) {
   if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: "okru", server: "OK.ru", resolve: resolveOkru, dynamic: true };
   if (/doodstream|dood\.|ds2play|do7go/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
   return null;
-}
-
-// src/_utils/quality.js
-var TIER_PRIORITY = ["x", "o", "h", "n", "l"];
-var TIERS = {
-  vimeos: { x: "1080p", o: "1080p", h: "720p", n: "480p", l: "360p" },
-  streamwish: { x: "1080p", o: "1080p", h: "1080p", n: "720p", l: "480p" },
-  vidhide: { x: "1080p", o: "1080p", h: "720p", n: "480p", l: "360p" }
-};
-function inferQuality(url, server) {
-  const tiers = TIERS[server] || {};
-  const set = /_,([a-z,]+),\.urlset/.exec(url);
-  if (set) {
-    const available = set[1].split(",");
-    for (let i = 0; i < TIER_PRIORITY.length; i++) {
-      const tier = TIER_PRIORITY[i];
-      if (available.indexOf(tier) >= 0 && tiers[tier]) return tiers[tier];
-    }
-  }
-  const labelled = /[_\-/](\d{3,4})p/.exec(url);
-  return labelled ? labelled[1] + "p" : "Auto";
 }
 
 // src/_utils/formatters.js
@@ -776,9 +808,6 @@ function resolveEmbed(embed) {
     if (!resolver) return [];
     try {
       const found = yield resolver.resolve(embed.url);
-      found.forEach((stream) => {
-        stream.quality = inferQuality(stream.url, resolver.key);
-      });
       return labeled(PROVIDER_NAME, embed.language, SERVERS_SUFFIX[resolver.key] || resolver.server, found);
     } catch (e) {
       return [];

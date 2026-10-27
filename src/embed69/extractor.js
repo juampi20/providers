@@ -7,7 +7,7 @@
 
 import { fetchBrowserText, fetchBrowserJson, BROWSER_UA } from '../_utils/http.js';
 import { between, hostOf, vibuxerUrl } from '../_utils/packed.js';
-import { resolveVidhide, resolveStreamWish } from '../_utils/resolvers.js';
+import { resolverFor } from '../_utils/resolvers.js';
 import { inferQuality } from '../_utils/quality.js';
 import { labeled, groupByLanguage, resolveFirstLanguage } from '../_utils/labels.js';
 import { tmdbApiKey } from '../_utils/tmdb.js';
@@ -89,10 +89,11 @@ export function playableEmbed(embed) {
 
 async function resolveEmbed(embed) {
     const embedUrl = playableEmbed(embed);
+    const resolver = resolverFor(embedUrl);
+    if (!resolver) return [];
     try {
-        const found = embed.server === 'streamwish' ? await resolveStreamWish(embedUrl) : await resolveVidhide(embedUrl);
-        found.forEach((stream) => { stream.quality = inferQuality(stream.url, embed.server); });
-        return labeled(PROVIDER_NAME, LANGUAGES[embed.language] || embed.language, SERVERS[embed.server], found);
+        const found = await resolver.resolve(embedUrl);
+        return labeled(PROVIDER_NAME, LANGUAGES[embed.language] || embed.language, resolver.server, found);
     } catch (e) {
         return [];
     }

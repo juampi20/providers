@@ -30,7 +30,6 @@ async function resolveEmbed(embed) {
     if (!resolver) return [];
     try {
         const found = await resolver.resolve(embed.url);
-        found.forEach((stream) => { stream.quality = inferQuality(stream.url, resolver.key); });
         return labeled(PROVIDER_NAME, POW_LANGUAGES[embed.language] || embed.language, resolver.server, found);
     } catch (e) {
         return [];
