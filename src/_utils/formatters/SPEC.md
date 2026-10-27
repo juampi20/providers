@@ -27,17 +27,27 @@ field.
 
 ## The presets
 
-- **`standard`** (active): `Provider • Idioma • Servidor`, with the server numbered when one server yields
-  several links (`Vidhide 2`). Quality stays in `quality`; `title` mirrors the language for clients that read
-  it. This is the shape Nuvio draws.
-- **`compact`**: `Provider • Idioma` with the server in `title`, for clients that show `title` instead of
-  `quality`.
-- **`verbose`**: `Provider • Idioma • Servidor • CALIDAD`, for a client that never renders `quality`.
+A formatter is a declarative list of parts per line, in the spirit of AIOStreams' formatters but limited to
+fields this repo can measure: `provider`, `server`, `language`, `quality`, `resolution`, `protocol`,
+`index`, and the media (`title`, `year`, `seasonEpisode`). A part that resolves to nothing is dropped, so one
+config reads right for a movie and for an episode.
 
-Switching is `DEFAULT_FORMATTER` in `formatters.js`; it changes every provider at once, which is the point.
+- **`standard`** (active): name `Provider • S1E1 • Idioma • Servidor`; description
+  `Título (año) · S1E1 · Idioma · Servidor · Calidad`. `title` mirrors the language.
+- **`compact`**: episode only in `title` and the description, never in the name.
+- **`verbose`**: quality also inside the name, for a client that does not draw `quality`.
+
+Switching is `DEFAULT_FORMATTER` in `formatters.js`; it changes every provider at once.
+
+## Where each field comes from
+
+`provider`/`language`/`server` come from the resolver that produced the stream, `quality` and `resolution`
+are measured (HLS master `RESOLUTION`, or the mp4's `tkhd`), `protocol` says `hls` or `mp4`, and
+`seasonEpisode`/`title`/`year` are supplied by the provider's entry point through `applyContext`, because the
+resolver is nested deep inside `extractStreams` and does not know what was asked for.
 
 ## Known rough edge
 
-When the link carries no quality the field says `Auto`, so the second line reads `Auto`. It is honest
-(nothing was measured) but noisy; suppressing it would mean sending an empty `quality`, which the client also
+When nothing measurable is available the field says `Auto`, so the second line reads `Auto`. It is honest —
+nothing was measured — but noisy; suppressing it would mean sending an empty `quality`, which the client also
 uses for sorting.

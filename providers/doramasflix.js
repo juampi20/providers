@@ -352,8 +352,27 @@ function inferQuality(url, server) {
   return labelled ? labelled[1] + "p" : "Auto";
 }
 
-// src/_utils/variants.js
-function labelForHeight(height) {
+// src/_utils/mp4.js
+var UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+var WINDOW = 65536;
+function readTkhd(bytes) {
+  const view = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let searchFrom = 0;
+  while (searchFrom < view.length) {
+    const at = view.indexOf("tkhd", searchFrom, "latin1");
+    if (at < 0) return null;
+    const size = view.readUInt32BE(at - 4);
+    const end = at - 4 + size;
+    if (size >= 84 && end <= view.length) {
+      const width = view.readUInt32BE(end - 8) / 65536;
+      const height = view.readUInt32BE(end - 4) / 65536;
+      if (width >= 100 && height >= 100) return { width, height };
+    }
+    searchFrom = at + 4;
+  }
+  return null;
+}
+function heightLabel(height) {
   if (height >= 2e3) return "4K";
   if (height >= 1e3) return "1080p";
   if (height >= 700) return "720p";
@@ -361,39 +380,83 @@ function labelForHeight(height) {
   if (height > 0) return "360p";
   return "Auto";
 }
+function mp4Resolution(url, headers) {
+  return __async(this, null, function* () {
+    const ranges = [{ Range: "bytes=0-" + (WINDOW - 1) }, { Range: "bytes=-" + WINDOW }];
+    for (const range of ranges) {
+      let response;
+      try {
+        response = yield fetch(url, { headers: Object.assign({ "User-Agent": UA }, headers || {}, range) });
+      } catch (e) {
+        return null;
+      }
+      if (!response.ok) continue;
+      if (response.status !== 206) {
+        return null;
+      }
+      const buffer = new Uint8Array(yield response.arrayBuffer());
+      const size = readTkhd(buffer);
+      if (size) return size;
+    }
+    return null;
+  });
+}
+
+// src/_utils/variants.js
+var labelForHeight = heightLabel;
+function isDirectFile(url) {
+  return !/(\.m3u8|\.txt(\?|$)|\/m3u8\/)/i.test(String(url));
+}
 function bestPlayable(url) {
   return __async(this, null, function* () {
     let body;
     try {
       body = yield fetchBrowserText(url);
     } catch (e) {
-      return { url, quality: "Auto" };
+      return { url, quality: "Auto", height: 0 };
     }
     if (body.indexOf("#EXT-X-STREAM-INF") < 0) {
-      return { url, quality: inferQuality(url) };
+      return { url, quality: inferQuality(url), height: 0 };
     }
     const lines = body.split("\n");
     let best = null;
-    lines.forEach((line, i) => {
-      if (line.indexOf("#EXT-X-STREAM-INF") !== 0) return;
+    lines.forEach((line2, i) => {
+      if (line2.indexOf("#EXT-X-STREAM-INF") !== 0) return;
       const uri = lines.slice(i + 1).filter((next) => next && next.charAt(0) !== "#")[0];
       if (!uri) return;
-      const resolution = /RESOLUTION=(\d+)x(\d+)/.exec(line);
-      const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
+      const resolution = /RESOLUTION=(\d+)x(\d+)/.exec(line2);
+      const bandwidth = /BANDWIDTH=(\d+)/.exec(line2);
       const height = resolution ? parseInt(resolution[2], 10) : 0;
       const bitrate = bandwidth ? parseInt(bandwidth[1], 10) : 0;
       const score = height * 1e6 + bitrate;
       if (!best || score > best.score) best = { url: resolveUrl(uri.trim(), url), height, score };
     });
-    if (!best) return { url, quality: "Auto" };
-    return { url: best.url, quality: labelForHeight(best.height) };
+    if (!best) return { url, quality: "Auto", height: 0 };
+    return { url: best.url, quality: labelForHeight(best.height), height: best.height };
   });
 }
 function withRealQuality(found) {
   return __async(this, null, function* () {
     return Promise.all(found.map((stream) => __async(null, null, function* () {
+      if (isDirectFile(stream.url)) {
+        const size = yield mp4Resolution(stream.url, stream.headers).catch(() => null);
+        const quality = size ? labelForHeight(size.height) : inferQuality(stream.url);
+        return {
+          url: stream.url,
+          headers: stream.headers,
+          quality,
+          resolution: size ? size.width + "x" + size.height : "",
+          protocol: "mp4"
+        };
+      }
       const resolved = yield bestPlayable(stream.url);
-      return { url: resolved.url, headers: stream.headers, quality: resolved.quality };
+      return {
+        url: resolved.url,
+        headers: stream.headers,
+        quality: resolved.quality,
+        resolution: resolved.height ? "x" + resolved.height : "",
+        protocol: "hls"
+      };
     })));
   });
 }
@@ -684,49 +747,100 @@ function baseResolverFor(embedUrl) {
 
 // src/_utils/formatters.js
 var SEPARATOR = " \u2022 ";
-function serverWithIndex(fields) {
-  if (!fields.server) return "";
-  return fields.index > 1 ? fields.server + " " + fields.index : fields.server;
-}
-var join = (parts) => parts.filter(Boolean).join(SEPARATOR);
+var GROUP_SEPARATOR = " \xB7 ";
 var FORMATTERS = {
-  /** `Provider • Idioma • Servidor`. Pensado para Nuvio: name + quality. */
+  /** `Provider • S1E1 • Idioma • Servidor`, con la obra y el episodio en la descripción. */
   standard: {
-    name: (fields) => join([fields.provider, fields.language, serverWithIndex(fields)]),
-    title: (fields) => fields.language,
-    quality: (fields) => fields.quality
+    name: ["provider", "seasonEpisode", "language", "server"],
+    title: ["language"],
+    description: [["title", "year"], ["seasonEpisode"], ["language", "server", "quality"]]
   },
-  /** `Provider • Idioma` con el servidor en el título, para clientes que sí muestran `title`. */
+  /** Sin episodio en el nombre: para un cliente que solo dibuja `name` y no quiere ruido. */
   compact: {
-    name: (fields) => join([fields.provider, fields.language]),
-    title: (fields) => join([serverWithIndex(fields)]),
-    quality: (fields) => fields.quality
+    name: ["provider", "language", "server"],
+    title: ["seasonEpisode"],
+    description: [["title", "year"], ["seasonEpisode"], ["language", "server", "quality"]]
   },
-  /** `Provider • Idioma • Servidor • CALIDAD`, para clientes que no dibujan la calidad. */
+  /** Con la calidad también en el nombre, para clientes que no dibujan `quality`. */
   verbose: {
-    name: (fields) => join([fields.provider, fields.language, serverWithIndex(fields), fields.quality && fields.quality !== "Auto" ? String(fields.quality).toUpperCase() : ""]),
-    title: (fields) => fields.language,
-    quality: (fields) => fields.quality
+    name: ["provider", "seasonEpisode", "language", "server", "quality"],
+    title: ["language"],
+    description: [["title", "year"], ["seasonEpisode"], ["language", "server", "resolution"]]
   }
 };
 var DEFAULT_FORMATTER = "standard";
+function partValue(part, fields) {
+  if (Array.isArray(part)) {
+    const inner = part.map((key) => partValue(key, fields)).filter(Boolean).join(GROUP_SEPARATOR);
+    return inner;
+  }
+  if (part === "server" && fields.server && fields.index > 1) return fields.server + " " + fields.index;
+  const value = fields[part];
+  return value === void 0 || value === null ? "" : String(value);
+}
+function line(parts, fields) {
+  return (parts || []).map((part) => partValue(part, fields)).filter(Boolean).join(SEPARATOR);
+}
 function formatStream(fields, name = DEFAULT_FORMATTER) {
   const formatter = FORMATTERS[name] || FORMATTERS[DEFAULT_FORMATTER];
+  const description = (formatter.description || []).map((part) => line([part], fields)).filter(Boolean).join(GROUP_SEPARATOR);
   return {
-    name: formatter.name(fields),
-    title: formatter.title(fields),
-    quality: formatter.quality(fields)
+    name: line(formatter.name, fields),
+    title: line(formatter.title, fields),
+    description,
+    quality: fields.quality || "Auto"
   };
 }
 
 // src/_utils/labels.js
-function labeled(provider, language, server, found) {
+function seasonEpisodeOf(context) {
+  if (!context || context.mediaType === "movie" || context.season === void 0 || context.season === null) return "";
+  if (context.episode === void 0 || context.episode === null) return "";
+  return "S" + parseInt(context.season, 10) + "E" + parseInt(context.episode, 10);
+}
+function labeled(provider, language, server, found, context) {
   return found.map((stream, i) => {
-    const quality = stream.quality || "Auto";
-    return Object.assign(
-      formatStream({ provider, language, server, quality, index: i + 1 }),
-      { url: stream.url, headers: stream.headers }
-    );
+    const fields = {
+      provider,
+      language,
+      server,
+      quality: stream.quality || "Auto",
+      resolution: stream.resolution || "",
+      protocol: stream.protocol || "",
+      index: i + 1,
+      title: context && context.title || "",
+      year: context && context.year || "",
+      seasonEpisode: seasonEpisodeOf(context)
+    };
+    const display = formatStream(fields);
+    return {
+      name: display.name,
+      title: display.title,
+      description: display.description,
+      quality: display.quality,
+      url: stream.url,
+      headers: stream.headers,
+      fields
+    };
+  });
+}
+function applyContext(streams, context) {
+  if (!streams || !streams.length) return streams;
+  return streams.map((stream) => {
+    if (!stream.fields) return stream;
+    const fields = Object.assign({}, stream.fields, {
+      title: context.title || stream.fields.title || "",
+      year: context.year || stream.fields.year || "",
+      seasonEpisode: seasonEpisodeOf(context) || stream.fields.seasonEpisode || ""
+    });
+    const display = formatStream(fields);
+    return Object.assign({}, stream, {
+      name: display.name,
+      title: display.title,
+      description: display.description,
+      quality: display.quality,
+      fields
+    });
   });
 }
 function groupByLanguage(embeds, order) {
@@ -875,7 +989,8 @@ function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
       log(mediaType === "movie" ? `Request: ${mediaType} ${tmdbId}` : `Request: ${mediaType} ${tmdbId}: S${season}E${episode}`);
-      return yield extractStreams(tmdbId, mediaType, season, episode);
+      const streams = yield extractStreams(tmdbId, mediaType, season, episode);
+      return applyContext(streams, { mediaType, season, episode });
     } catch (error) {
       log("warn", error.message);
       return [];

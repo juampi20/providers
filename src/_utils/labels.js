@@ -5,22 +5,80 @@
 import { formatStream } from './formatters.js';
 
 /**
+ * Contexto de la obra que se está buscando. Se aplica después de resolver, porque el resolver de cada
+ * provider no lo conoce (está en `extractStreams` o en `getStreams`).
+ * @typedef {{ mediaType?: string, season?: number, episode?: number, title?: string, year?: string }} MediaContext
+ */
+
+/** `S1E1` en series; vacío en películas. */
+function seasonEpisodeOf(context) {
+    if (!context || context.mediaType === 'movie' || context.season === undefined || context.season === null) return '';
+    if (context.episode === undefined || context.episode === null) return '';
+    return 'S' + parseInt(context.season, 10) + 'E' + parseInt(context.episode, 10);
+}
+
+/**
  * Shape a stream the way the client draws it. The formatter decides where each field goes — see
- * [formatters](formatters): `name` carries provider, language and server, `quality` travels in its own field
- * because Nuvio draws it on the second line, and `title` mirrors the language for clients that read it.
+ * [formatters](formatters): `name` carries provider, episode, language and server, `quality` travels in its
+ * own field because Nuvio draws it on the second line, and `description` repeats the context for clients that
+ * show it.
  *
  * @param {string} provider
  * @param {string} language
  * @param {string} server
- * @param {Array<{url: string, quality?: string, headers?: object}>} found
+ * @param {Array<{url: string, quality?: string, resolution?: string, protocol?: string, headers?: object}>} found
+ * @param {MediaContext} [context]
  */
-export function labeled(provider, language, server, found) {
+export function labeled(provider, language, server, found, context) {
     return found.map((stream, i) => {
-        const quality = stream.quality || 'Auto';
-        return Object.assign(
-            formatStream({ provider, language, server, quality, index: i + 1 }),
-            { url: stream.url, headers: stream.headers }
-        );
+        const fields = {
+            provider,
+            language,
+            server,
+            quality: stream.quality || 'Auto',
+            resolution: stream.resolution || '',
+            protocol: stream.protocol || '',
+            index: i + 1,
+            title: (context && context.title) || '',
+            year: (context && context.year) || '',
+            seasonEpisode: seasonEpisodeOf(context)
+        };
+        const display = formatStream(fields);
+        return {
+            name: display.name,
+            title: display.title,
+            description: display.description,
+            quality: display.quality,
+            url: stream.url,
+            headers: stream.headers,
+            fields
+        };
+    });
+}
+
+/**
+ * Vuelve a componer una lista ya etiquetada agregando el contexto de la obra (título, año, temporada y
+ * episodio). Se llama al final, en la entrada del provider, donde ese contexto existe.
+ * @param {Array} streams
+ * @param {MediaContext} context
+ */
+export function applyContext(streams, context) {
+    if (!streams || !streams.length) return streams;
+    return streams.map((stream) => {
+        if (!stream.fields) return stream;
+        const fields = Object.assign({}, stream.fields, {
+            title: context.title || stream.fields.title || '',
+            year: context.year || stream.fields.year || '',
+            seasonEpisode: seasonEpisodeOf(context) || stream.fields.seasonEpisode || ''
+        });
+        const display = formatStream(fields);
+        return Object.assign({}, stream, {
+            name: display.name,
+            title: display.title,
+            description: display.description,
+            quality: display.quality,
+            fields
+        });
     });
 }
 

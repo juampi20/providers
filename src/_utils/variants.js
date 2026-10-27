@@ -10,15 +10,14 @@
 import { fetchBrowserText } from './http.js';
 import { resolveUrl } from './packed.js';
 import { inferQuality } from './quality.js';
+import { mp4Resolution, heightLabel } from './mp4.js';
 
 /** Alto de la variante al nombre que se muestra. */
-function labelForHeight(height) {
-    if (height >= 2000) return '4K';
-    if (height >= 1000) return '1080p';
-    if (height >= 700) return '720p';
-    if (height >= 460) return '480p';
-    if (height > 0) return '360p';
-    return 'Auto';
+const labelForHeight = heightLabel;
+
+/** ¿El link es un archivo directo y no un HLS? (zilla sirve HLS bajo `/m3u8/<hash>`, sin extensión) */
+export function isDirectFile(url) {
+    return !/(\.m3u8|\.txt(\?|$)|\/m3u8\/)/i.test(String(url));
 }
 
 /**
@@ -30,12 +29,12 @@ export async function bestPlayable(url) {
     try {
         body = await fetchBrowserText(url);
     } catch (e) {
-        return { url, quality: 'Auto' };
+        return { url, quality: 'Auto', height: 0 };
     }
 
     if (body.indexOf('#EXT-X-STREAM-INF') < 0) {
         // Playlist de media: la resolución no está en el texto, así que se cae a lo que diga el link.
-        return { url, quality: inferQuality(url) };
+        return { url, quality: inferQuality(url), height: 0 };
     }
 
     const lines = body.split('\n');
@@ -53,17 +52,39 @@ export async function bestPlayable(url) {
         if (!best || score > best.score) best = { url: resolveUrl(uri.trim(), url), height, score };
     });
 
-    if (!best) return { url, quality: 'Auto' };
-    return { url: best.url, quality: labelForHeight(best.height) };
+    if (!best) return { url, quality: 'Auto', height: 0 };
+    return { url: best.url, quality: labelForHeight(best.height), height: best.height };
 }
 
 /**
- * Aplica `bestPlayable` a la salida de un resolver: `[{ url, headers }]` → `[{ url, headers, quality }]`.
+ * Aplica `bestPlayable` a la salida de un resolver y le agrega lo que se pudo medir de verdad:
+ * `{ url, headers }` → `{ url, headers, quality, resolution, protocol }`.
+ *
+ * Un archivo directo (`.mp4`) se etiqueta leyendo su `tkhd`: es la fuente de mejor calidad en estos hosts y
+ * sin eso quedaría en `Auto`, por debajo de cualquier HLS.
+ *
  * @param {Array<{url: string, headers?: object}>} found
  */
 export async function withRealQuality(found) {
     return Promise.all(found.map(async (stream) => {
+        if (isDirectFile(stream.url)) {
+            const size = await mp4Resolution(stream.url, stream.headers).catch(() => null);
+            const quality = size ? labelForHeight(size.height) : inferQuality(stream.url);
+            return {
+                url: stream.url,
+                headers: stream.headers,
+                quality,
+                resolution: size ? size.width + 'x' + size.height : '',
+                protocol: 'mp4'
+            };
+        }
         const resolved = await bestPlayable(stream.url);
-        return { url: resolved.url, headers: stream.headers, quality: resolved.quality };
+        return {
+            url: resolved.url,
+            headers: stream.headers,
+            quality: resolved.quality,
+            resolution: resolved.height ? 'x' + resolved.height : '',
+            protocol: 'hls'
+        };
     }));
 }
