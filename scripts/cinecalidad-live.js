@@ -5,7 +5,7 @@ const { _test } = require('../providers/cinecalidad');
 const slug = process.argv[2] || 'amor-y-tesoro';
 const year = process.argv[3] || '';
 
-_test.findMoviePage([{ title: slug.replace(/-/g, ' '), year: year }])
+_test.findMoviePage([slug.replace(/-/g, ' ')], year)
     .then((html) => {
         if (!html) return console.log(slug, '-> sin página con players');
         const embeds = _test.embedUrls(html);

@@ -17,28 +17,41 @@ Personal provider repository for Nuvio.
 
 ## Adding a provider
 
-1. Create `providers/<name>.js` that exports `getStreams(tmdbId, mediaType, season, episode)` and resolves to a list of `{ name, title, url, quality, headers }`.
-2. Add an entry to `scrapers` in `manifest.json` with `filename` pointing to it.
-3. Add tests in `test/` with saved HTML fixtures and a `scripts/<name>-live.js` that hits the real site.
+1. Create `src/<name>/index.js` that exports `getStreams(tmdbId, mediaType, season, episode)` and resolves to a list of `{ name, title, url, quality, headers }`. Site-specific flow only — HTTP, the unpacker, the resolvers, the language cut, the title matcher and quality inference come from `src/core.js`. If the provider grows, split it into `extractor.js`, `http.js`, … next to `index.js` and require them.
+2. Add `src/<name>/provider.json` with the manifest entry (`id`, `name`, `description`, `version`, `supportedTypes`, …). `filename` is derived, so it can't point at the wrong file.
+3. `npm run build` bundles it into `providers/<name>.js` and regenerates the `scrapers` array of `manifest.json`.
+4. Add tests in `test/` with saved fixtures and a `scripts/<name>-live.js` that hits the real site.
 
-Nuvio runs providers in QuickJS, wrapped in a function. For TMDB calls, read the global `TMDB_API_KEY` that Nuvio injects and never declare your own, since a local one hides it. Older builds inject none, so let users save a key through `onSettings` (it comes back in `SCRAPER_SETTINGS`, and the manifest entry needs `hasSettings: true`) and keep a fallback that needs no key.
+`providers/*.js` and the `scrapers` block of `manifest.json` are build output: edit `src/`, never them.
+
+Nuvio runs providers in QuickJS on desktop and Hermes on TV/mobile, wrapped in a function. For TMDB calls, read the global `TMDB_API_KEY` that Nuvio injects and never declare your own, since a local one hides it. Older builds inject none, so let users save a key through `onSettings` (it comes back in `SCRAPER_SETTINGS`, and the manifest entry needs `hasSettings: true`) and keep a fallback that needs no key.
 
 HackStore and CineCalidad are the exception: both address titles by a slug built from the Spanish title and year, so they need TMDB metadata and return nothing without a key. SoloLatino falls back to Wikidata, which needs none.
 
-FireTV runs providers on Hermes, which has no `Buffer` and may lack `AbortController`, `String.prototype.normalize` and newer `Promise` helpers. Providers fold accents with a table, build URLs by hand and stick to promise chains.
+FireTV runs providers on Hermes, which has no `Buffer` and may lack `AbortController`, `String.prototype.normalize` and newer `Promise` helpers. Providers fold accents with a table and build URLs by hand. `async`/`await` is fine in `src/` even though Hermes rejects it in plugins: esbuild lowers it to generators on the way into `providers/`, which is why the built file is what gets tested.
 
 ## Source layout
 
-`src/providers/<site>.js` holds one provider's own flow; `src/core.js` holds what they share — HTTP, the packed-player unpacker, the vimeos/streamwish resolvers, quality inference, the language cut, the TMDB key helpers. `npm run build` bundles each into `providers/<site>.js`, which is what Nuvio downloads.
+`src/<provider>/index.js` holds one provider's own flow and `src/<provider>/provider.json` its manifest entry; `src/core.js` holds what they share — HTTP, the packed-player unpacker, the vimeos/streamwish resolvers, quality inference, the language cut, the title matcher, the TMDB key helpers. `npm run build` (esbuild, `target: es2016`) bundles each into `providers/<provider>.js`, which is what Nuvio downloads, and regenerates the manifest from the `provider.json` files.
 
-**`providers/` is build output — edit `src/` and rebuild.** The bundle inlines `crypto-js`, so a provider never calls `require` at runtime, which is what keeps SoloLatino working on FireTV.
+**`providers/` y el bloque `scrapers` de `manifest.json` son salida de build — se edita `src/` y se rebuildea.** El bundle inlinea `crypto-js`, así que un provider no llama a `require` en runtime, que es lo que lo mantiene vivo en el Hermes de FireTV.
 
 ## Development
 
 ```sh
 npm install
-npm test                            # builds src/ into providers/, then runs the offline tests
-npm run live -- tt0903747-1x01      # SoloLatino against the real sites
+npm run build                       # src/<provider>/ -> providers/*.js + manifest.json (readable output)
+npm run build:min                   # same, minified, for a release
+npm test                            # build, then the offline tests
+npm start                           # local server on :3000 for Nuvio's Plugin Tester
+```
+
+Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; `npm test` y los scripts live cubren la lógica.
+
+Para los sitios reales:
+
+```sh
+npm run live -- tt0903747-1x01      # SoloLatino
 node scripts/hackstore-live.js el-origen-2010
 node scripts/cinecalidad-live.js amor-y-tesoro 2008
 ```

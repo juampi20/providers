@@ -1,0 +1,19 @@
+{
+  "id": "cinecalidad",
+  "name": "CineCalidad",
+  "description": "Movies in Latin Spanish via cinecalidad.vg (vimeos, streamwish). Titles matched across TMDB locales.",
+  "version": "1.2.0",
+  "author": "chester",
+  "supportedTypes": [
+    "movie"
+  ],
+  "enabled": true,
+  "formats": [
+    "m3u8"
+  ],
+  "logo": "https://www.google.com/s2/favicons?domain=cinecalidad.vg&sz=128",
+  "contentLanguage": [
+    "es"
+  ],
+  "hasSettings": true
+}

@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "esbuild src/providers/*.js --bundle --format=cjs --target=es2016 --platform=neutral --minify-whitespace --banner:js=\"/* GENERADO por npm run build desde src/ - no editar a mano */\" --outdir=providers --log-level=warning",
+    "build": "node scripts/build.js",
+    "build:min": "node scripts/build.js --minify",
     "test": "npm run build && node --test",
+    "start": "node server.js",
     "live": "node scripts/sololatino-live.js"
   },
   "devDependencies": {

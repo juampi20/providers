@@ -1,0 +1,20 @@
+{
+  "id": "hackstore",
+  "name": "HackStore",
+  "description": "Movies and series in Latin Spanish via hackstore2.com (vimeos, streamwish).",
+  "version": "1.2.0",
+  "author": "chester",
+  "supportedTypes": [
+    "movie",
+    "tv"
+  ],
+  "enabled": true,
+  "formats": [
+    "m3u8"
+  ],
+  "logo": "https://www.google.com/s2/favicons?domain=hackstore2.com&sz=128",
+  "contentLanguage": [
+    "es"
+  ],
+  "hasSettings": true
+}

@@ -14,21 +14,28 @@ every provider (`id`, `name`, `filename`, `supportedTypes`, `formats`, `contentL
 those files are **build output**, not source:
 
 ```
-src/core.js          ──┐
-src/providers/*.js     ─┴─▶ npm run build (esbuild) ──▶ providers/<site>.js ──▶ Nuvio
+src/core.js                  ──┐
+src/<provider>/index.js       ──┼─▶ npm run build (esbuild) ──▶ providers/<provider>.js ──▶ Nuvio
+src/<provider>/provider.json  ──┘        └─▶ manifest.json (scrapers generados)
                                                  ▲
-                            test/<site>.test.js (fixtures)   scripts/<site>-live.js (real sites)
+                            test/<provider>.test.js (fixtures)   scripts/<provider>-live.js (real sites)
 ```
 
 `src/core.js` holds everything that is not site-specific — HTTP, the packed-player unpacker, the vimeos and
-streamwish resolvers, quality inference, slug folding, the language cut, the TMDB key/settings helpers. A
-site file holds only its own flow: ids, URLs, page parsing, which servers it trusts. esbuild bundles core
-and the site file into the single file Nuvio loads, `crypto-js` included, so the artifact issues no runtime
-`require` — that is what makes it safe on FireTV.
+streamwish resolvers, quality inference, slug folding, the title matcher, the language cut, the TMDB
+key/settings helpers. A provider directory holds only its own flow — ids, URLs, page parsing, which servers
+it trusts — plus a `provider.json` with its manifest entry. esbuild bundles core and the provider into the
+single file Nuvio loads, `crypto-js` included, so the artifact issues no runtime `require` — that is what
+makes it safe on FireTV.
 
-`manifest.json` points at the built files. Editing `providers/*.js` by hand is a dead end: `npm run build`
-overwrites them, and `npm test` builds before it tests, so the tests always run against what would ship.
-The `_test` export surface a provider exposes is what the tests and the live scripts call.
+Both `providers/*.js` and the manifest's `scrapers` array are **build output**: the entry comes from
+`provider.json` and its `filename` is derived, so a provider cannot point at the wrong file or drift from
+its entry. Editing `providers/*.js` by hand is a dead end: `npm run build` overwrites them, and `npm test`
+builds before it tests, so the tests always run against what would ship. The `_test` export surface a
+provider exposes is what the tests and the live scripts call.
+
+`server.js` (`npm start`) serves the repo over HTTP so a Nuvio *debug build* can load a provider or the
+manifest from `:3000` in its Plugin Tester — the loop that replaces pushing for every change.
 
 ## The Nuvio runtime contract
 
@@ -73,8 +80,13 @@ contract shapes every provider:
 
 `npm test` builds first and then runs `node --test` against saved fixtures — so the artifact under test is
 the one that would ship, and the run stays network-free: it catches parser regressions from site layout
-changes but not site-side outages. The per-site live scripts skip TMDB and hit the real pages, the only
-check that notices a source going dark.
+changes but not site-side outages. The per-provider live scripts skip TMDB and hit the real pages, the only
+local check that notices a source going dark.
+
+Neither of those runs on Hermes, so neither proves the provider loads in the app: a Node test can pass while
+the plugin fails on device (a Node-only module, an unsupported syntax, a top-level throw). The last gate is
+Nuvio's Plugin Tester against `npm start`, which runs the same engine as the shipped app— provider changes
+are not done until they pass there.
 
 ## Providers
 

@@ -1,0 +1,3 @@
+# Archivos que el build reescribe: LF fijo, si no cada build los marca como modificados por el CRLF de Windows.
+manifest.json text eol=lf
+providers/*.js text eol=lf
