@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { _test } = require('../providers/sololatino');
+const { _test, getStreams } = require('../providers/sololatino');
 
 const fixture = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', name), 'utf8');
 
@@ -121,4 +121,59 @@ test('playableLinks returns hls2 and hls3 without fetching, since Nuvio waits fo
     } finally {
         global.fetch = original;
     }
+});
+
+function withRoutes(routes, fn) {
+    const original = global.fetch;
+    const calls = [];
+    global.fetch = (url) => {
+        calls.push(url);
+        const route = routes.filter((r) => r.match.test(url))[0];
+        const body = route ? route.body : '';
+        return Promise.resolve({
+            ok: true,
+            text: () => Promise.resolve(body),
+            json: () => Promise.resolve(JSON.parse(body))
+        });
+    };
+    return fn().then((r) => { global.fetch = original; return { result: r, calls }; },
+        (e) => { global.fetch = original; throw e; });
+}
+
+const twoLanguagePage = (latHost, subHost) =>
+    '<li class="SLD_A" data-lang="0"><img src="https://embed69.org/static/lang/LAT.png"></li>' +
+    '<li class="SLD_B" data-lang="1"><img src="https://embed69.org/static/lang/SUB.png"></li>' +
+    "<li onclick=\"playServerVast('" + latHost + "');\" data-lang=\"0\">" +
+    "<li onclick=\"playServerVast('" + subHost + "');\" data-lang=\"1\">";
+
+test('getStreams cuts at latino and never fetches the other languages', () => {
+    global.TMDB_API_KEY = 'injected';
+    const routes = [
+        { match: /api\.themoviedb\.org/, body: '{"imdb_id":"tt0903747"}' },
+        { match: /embed69\.org\/video\//, body: twoLanguagePage('https://vidhidepro.com/v/lat', 'https://vidhidepro.com/v/sub') },
+        { match: /vidhidepro\.com/, body: fixture('vidhide.html') }
+    ];
+    return withRoutes(routes, () => getStreams('1396', 'tv', 1, 1)).then(({ result, calls }) => {
+        delete global.TMDB_API_KEY;
+        assert.ok(result.length > 0);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Latino']);
+        assert.strictEqual(calls.filter((u) => u.indexOf('/v/lat') >= 0).length, 1);
+        assert.deepStrictEqual(calls.filter((u) => u.indexOf('/v/sub') >= 0), []);
+    });
+});
+
+test('getStreams falls through to the next language when latino yields no link', () => {
+    global.TMDB_API_KEY = 'injected';
+    const routes = [
+        { match: /api\.themoviedb\.org/, body: '{"imdb_id":"tt0903747"}' },
+        { match: /embed69\.org\/video\//, body: twoLanguagePage('https://vidhidepro.com/v/lat', 'https://vidhidepro.com/v/sub') },
+        { match: /\/v\/lat/, body: '<html>no player</html>' },
+        { match: /vidhidepro\.com/, body: fixture('vidhide.html') }
+    ];
+    return withRoutes(routes, () => getStreams('1396', 'tv', 1, 1)).then(({ result, calls }) => {
+        delete global.TMDB_API_KEY;
+        assert.ok(result.length > 0);
+        assert.deepStrictEqual([...new Set(result.map((s) => s.title.split(' - ')[0]))], ['Subtitulado']);
+        assert.strictEqual(calls.filter((u) => u.indexOf('/v/sub') >= 0).length, 1);
+    });
 });

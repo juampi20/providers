@@ -3,10 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test",
+    "build": "esbuild src/providers/*.js --bundle --format=cjs --target=es2016 --platform=neutral --minify-whitespace --banner:js=\"/* GENERADO por npm run build desde src/ - no editar a mano */\" --outdir=providers --log-level=warning",
+    "test": "npm run build && node --test",
     "live": "node scripts/sololatino-live.js"
   },
   "devDependencies": {
-    "crypto-js": "^4.2.0"
+    "crypto-js": "^4.2.0",
+    "esbuild": "^0.28.2"
   }
 }
