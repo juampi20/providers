@@ -3,7 +3,6 @@ id: cinecalidad
 type: module-design
 status: draft
 title: CineCalidad provider
-parent: architecture
 ---
 
 ## Responsibility
@@ -54,7 +53,7 @@ request is made.
 
 `quality` is read from the tier list inside the master URL — a pure function, nothing is probed. The site
 carries no language metadata, so every stream is labelled `Latino` and the language cut is a no-op here
-([goal](goal#principles)).
+(a recorded product principle).
 
 The site also links some players through an intermediate page (a `btn_enlace` button) instead of a direct
 player host. That path is **not** followed: those embeds look like unknown hosts and are dropped. Only

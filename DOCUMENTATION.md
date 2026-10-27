@@ -8,8 +8,8 @@
 > va a `providers/` (no a `dist/`). La entrada del manifest se genera desde `scraper.json` sobre
 > `scraper-defaults.json`.
 >
-> La verdad de este repo son `README.md`, `architecture.md` y los SPEC del grafo; esto es la referencia
-> externa del contrato de Nuvio.
+> La verdad de este repo es este documento más los `SPEC.md` que acompañan a cada provider; el resto es
+> implementación.
 
 ---
 

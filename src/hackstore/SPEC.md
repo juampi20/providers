@@ -3,7 +3,6 @@ id: hackstore
 type: module-design
 status: draft
 title: HackStore provider
-parent: architecture
 ---
 
 ## Responsibility
@@ -32,7 +31,7 @@ without a TMDB key**, from the plugin settings or Nuvio's injected `TMDB_API_KEY
 `[]` and warns, which is the recorded cost of a slug-addressed site.
 
 The player list then comes from `api/rest/player?post_id=…` as `[{ url, lang, quality }]` — the language is
-the site's own, so the cut is on real data, not a guess ([goal](goal#principles)). Castilian spellings the
+the site's own, so the cut is on real data, not a guess (a recorded product principle). Castilian spellings the
 site uses (`Castellano`, `Latinoamericano`) are folded onto the three canonical names.
 
 The `single` endpoint also returns the post's title, and that is checked before its id is used: every
@@ -49,7 +48,7 @@ Only hosts with a resolver become streams; everything else is dropped before any
 - **Streamwish** — mirrors are rewritten to `vibuxer.com/e/<id>`, the packed player is unpacked, and only
   `hls2`/`hls3` survive (`hls4` segments carry a PNG header libmpv refuses). Known to hand out dead CDN
   links; kept because it costs nothing and may recover.
-- **VOE is not resolved** ([goal](goal#non-goals)), and neither are hosts with no resolver (`doodstream`, …).
+- **VOE is not resolved** (a recorded non-goal), and neither are hosts with no resolver (`doodstream`, …).
 
 `quality` is read from the tier list inside a multi-quality master URL (`_,n,h,.urlset`) — a pure function,
 so no link is ever probed. A URL with no tier and no `<n>p` in it reports `Auto`.

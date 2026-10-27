@@ -3,7 +3,6 @@ id: vimeus
 type: module-design
 status: draft
 title: Vimeus provider
-parent: architecture
 ---
 
 ## Responsibility

@@ -3,7 +3,6 @@ id: sololatino
 type: module-design
 status: draft
 title: SoloLatino provider
-parent: architecture
 ---
 
 ## Responsibility
@@ -52,7 +51,7 @@ at least one playable link ends the call: the following groups are never fetched
 resolve in parallel.
 
 The cut is deliberate, not an oversight: it is what makes one language fit Nuvio's 60 s budget instead of
-all of them ([goal](goal#principles)). The cost is that Castellano and Subtitulado go unoffered whenever
+all of them (a recorded product principle). The cost is that Castellano and Subtitulado go unoffered whenever
 latino resolves. Because embed69 states each embed's language on the page, the cut happens before any
 resolution — no request is spent discovering that a language is unnecessary.
 
@@ -62,7 +61,7 @@ Only Vidhide and Streamwish are playable. Streamwish mirrors serve an obfuscated
 rewrites them to `vibuxer.com/e/<id>`, which serves the same file as a packed player; Vidhide links are used
 as-is. Both are then unpacked (Dean Edwards' `p,a,c,k,e,d`) to reach the player's `var links` object, from
 which only `hls2` and `hls3` become streams. `hls4` is excluded because its segments carry a PNG header
-libmpv refuses; nothing is probed ([goal](goal#non-goals)).
+libmpv refuses; nothing is probed (a recorded non-goal).
 
 Streams are labelled as [utils](utils) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
 language, numbered suffix in `title` when one server yields several links — and carry the player

@@ -3,7 +3,6 @@ id: utils
 type: module-design
 status: draft
 title: Shared provider utilities (src/_utils)
-parent: architecture
 ---
 
 ## Responsibility
@@ -19,7 +18,7 @@ Knows nothing about any site. No provider id, no site URL, no site-specific sele
 belong to the site file, which imports from here and never the other way. A helper joins this file when a
 second site needs it, not in anticipation of one.
 
-Constraints inherited from [architecture](architecture#the-nuvio-runtime-contract): no `Buffer`, no
+Constraints inherited from the runtime contract: no `Buffer`, no
 `atob` assumption, no `String.prototype.normalize`, no `Promise.any`/`allSettled`/`matchAll`, promise
 chains rather than `async`/`await`.
 
@@ -27,7 +26,7 @@ chains rather than `async`/`await`.
 
 - **Playable links.** `packedLinks` unpacks the player and keeps only `hls2`/`hls3` — `hls4` segments carry
   a PNG header libmpv refuses — and it never probes a link, because Nuvio waits on every pending request
-  ([goal](goal#non-goals)). `resolveStreamWish` is `packedLinks` behind the `vibuxer.com` rewrite.
+  (a recorded non-goal). `resolveStreamWish` is `packedLinks` behind the `vibuxer.com` rewrite.
 - **Quality.** `inferQuality` reads the tier list out of a multi-quality master URL, so a label costs no
   request; anything unrecognised is `Auto` rather than a lie.
 - **The language cut.** `groupByLanguage` + `resolveFirstLanguage` implement the recorded rule — one
@@ -38,12 +37,12 @@ chains rather than `async`/`await`.
 - **`labeled`** shapes every stream the way latinuvio does: `name` = `Provider • CALIDAD • Servidor` and
   `title` = the language, with a numeric suffix in `title` when one server yields several links. Quality is
   dropped from `name` when it is unknown instead of printing `AUTO` on every row, and no codec, audio, HDR
-  or "verified" mark is added — those would be invented or probed ([goal](goal#principles)).
+  or "verified" mark is added — those would be invented or probed (a recorded product principle).
 - **Which title is this?** `titlesFor` harvests the Spanish title, the original one and the regional
   alternatives from TMDB in three parallel requests; `titleSimilarity` scores word sets rather than
   substrings; `bestTitleMatch` returns `null` below `TITLE_MATCH_THRESHOLD` (0.7) and drops a candidate
   whose year is off by more than one. Returning nothing is the recorded preference over returning another
-  title's streams ([goal](goal#principles)); the threshold is the only knob, and it is strict on purpose.
+  title's streams (a recorded product principle); the threshold is the only knob, and it is strict on purpose.
 
 ## Testing
 
