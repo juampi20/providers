@@ -13,7 +13,6 @@ const WINDOW = 65536;
 
 /**
  * Ancho y alto declarados en el `tkhd` de un buffer, o null si no está ahí.
- * @param {Uint8Array} bytes
  */
 export function readTkhd(bytes) {
     const view = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
@@ -34,7 +33,6 @@ export function readTkhd(bytes) {
     return null;
 }
 
-/** @param {number} height */
 export function heightLabel(height) {
     if (height >= 2000) return '4K';
     if (height >= 1000) return '1080p';
@@ -47,8 +45,6 @@ export function heightLabel(height) {
 /**
  * Resolución de un mp4: se mira la cabecera y, si `moov` está al final (habitual en estos hosts), la cola.
  * Devuelve `null` cuando el servidor no acepta rangos o el archivo no declara tamaño.
- * @param {string} url
- * @param {object} [headers]
  */
 export async function mp4Resolution(url, headers) {
     const ranges = [{ Range: 'bytes=0-' + (WINDOW - 1) }, { Range: 'bytes=-' + WINDOW }];
@@ -74,8 +70,6 @@ export async function mp4Resolution(url, headers) {
 /**
  * Tamaño del archivo por HEAD, para cuando el runtime no acepta `Range` y la resolución no se puede leer.
  * No es una resolución, pero es un dato real y comparable.
- * @param {string} url
- * @param {object} [headers]
  */
 export async function mp4Size(url, headers) {
     const probe = await probeDirect(url, headers);
@@ -85,8 +79,6 @@ export async function mp4Size(url, headers) {
 /**
  * Un solo HEAD que sirve para dos cosas: dice si el archivo vive y cuánto pesa. Se cachea el veredicto,
  * porque un host muerto no tiene por qué costar un request en cada búsqueda.
- * @param {string} url
- * @param {object} [headers]
  */
 export async function probeDirect(url, headers) {
     const cached = cachedVerdict('head:' + url);
@@ -105,7 +97,6 @@ export async function probeDirect(url, headers) {
     return verdict;
 }
 
-/** @param {number} bytes */
 export function sizeLabel(bytes) {
     if (!bytes) return '';
     const mb = Math.round(bytes / 1048576);

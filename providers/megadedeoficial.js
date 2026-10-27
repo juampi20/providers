@@ -72,7 +72,8 @@ var index_exports = {};
 __export(index_exports, {
   _test: () => _testAll,
   _testAll: () => _testAll,
-  getStreams: () => getStreams
+  getStreams: () => getStreams,
+  onSettings: () => onSettings
 });
 module.exports = __toCommonJS(index_exports);
 
@@ -289,6 +290,16 @@ function tmdbApiKey() {
   const saved = typeof SCRAPER_SETTINGS !== "undefined" && SCRAPER_SETTINGS && SCRAPER_SETTINGS.tmdbApiKey;
   if (saved && String(saved).trim()) return String(saved).trim();
   return typeof TMDB_API_KEY !== "undefined" && TMDB_API_KEY ? TMDB_API_KEY : null;
+}
+function tmdbSettings(description) {
+  return [{
+    type: "text",
+    key: "tmdbApiKey",
+    label: "TMDB API key",
+    description,
+    placeholder: "TMDB v3 API key",
+    isPassword: true
+  }];
 }
 function tmdbGet(path, key) {
   const separator = path.indexOf("?") >= 0 ? "&" : "?";
@@ -972,6 +983,9 @@ function log() {
 }
 
 // src/megadedeoficial/index.js
+function onSettings() {
+  return tmdbSettings("Required. The site is addressed by the IMDb id, which this provider reads from TMDB.");
+}
 function getStreams(tmdbId, mediaType, season, episode) {
   return __async(this, null, function* () {
     try {
@@ -984,4 +998,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
     }
   });
 }
-var _testAll = _test;
+var _testAll = Object.assign({ onSettings }, _test);

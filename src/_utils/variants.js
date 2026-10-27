@@ -23,7 +23,6 @@ export function isDirectFile(url) {
 
 /**
  * Devuelve la mejor variante de un master, o el mismo link cuando ya es una playlist de media.
- * @param {string} url
  */
 export async function bestPlayable(url) {
     const cached = cachedVerdict('hls:' + url);
@@ -68,8 +67,6 @@ export async function bestPlayable(url) {
  *
  * Un archivo directo (`.mp4`) se etiqueta leyendo su `tkhd`: es la fuente de mejor calidad en estos hosts y
  * sin eso quedaría en `Auto`, por debajo de cualquier HLS.
- *
- * @param {Array<{url: string, headers?: object}>} found
  */
 export async function withRealQuality(found) {
     const resolved = await Promise.all(found.map(async (stream) => {

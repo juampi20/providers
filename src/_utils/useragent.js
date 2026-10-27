@@ -22,18 +22,8 @@ function getRandomizer(seed) {
 }
 
 /**
- * Generates a random user agent string to use.
- *
- * @param {string} deviceType
- *   The device type, usually one of 'android', 'windows' or 'ubuntu'.
- *   If omitted, a random one will be picked.
- * @param {string} browserType
- *   The browser type, usually one of 'chrome' or 'firefox'.
- *   If omitted, a random one will be picked.
- * @param {string|null} seed
- *   The seed to use for the random selector.
- * @returns {string}
- *   The user agent string to use for the request.
+ * Random user agent for a device ('android', 'windows', 'ubuntu') and a browser ('chrome', 'firefox');
+ * both default to a random pick, and `seed` makes the choice repeatable.
  */
 export function generateRandomUserAgent(deviceType, browserType, seed = null) {
   const devices = ['android', 'windows', 'ubuntu'];

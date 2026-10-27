@@ -13,8 +13,6 @@ const TIERS = {
 /**
  * A multi-quality master URL lists its tiers (`_,l,n,h,.urlset`); the best one is the label.
  * Anything without a tier or an explicit `480p`-style marker reports `Auto` rather than a lie.
- * @param {string} url
- * @param {string} server
  */
 export function inferQuality(url, server) {
     const tiers = TIERS[server] || {};

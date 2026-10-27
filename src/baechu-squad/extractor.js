@@ -1,11 +1,3 @@
-/**
- * Extractor Logic
- * This file just returns the video streams.
- * 
- * It primarily includes Baechu Squad's torrent links. 
- */
-
-// The name of the provider.
 export const PROVIDER_NAME = 'Baechu Squad';
 
 // https://docs.google.com/document/d/18y_qEMKr7FoedRlWPjUVWBQFGTjsP5D0TLSpwvMlJ0E/mobilebasic
@@ -17,10 +9,6 @@ const seasonTorrents = {
     // The Genius
     1: {
       magnet: 'torrent://874fc5daf1c0c4072c635ef9979d48f4400ba8d3',
-      /*fileIdx: {
-        10: 0,
-        1: 9,
-      },*/
     },
     2: {
       magnet: 'torrent://2e7ae32a2b8360ec4e14581e034858f794e3620e',

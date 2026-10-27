@@ -11,7 +11,6 @@ const TTL = 30 * 60 * 1000;
 const MAX = 300;
 const CACHE = {};
 
-/** @param {string} url */
 export function cachedVerdict(url) {
     const entry = CACHE[url];
     if (!entry) return undefined;
@@ -22,10 +21,6 @@ export function cachedVerdict(url) {
     return entry.value;
 }
 
-/**
- * @param {string} url
- * @param {{alive: boolean, bytes?: number}} verdict
- */
 export function rememberVerdict(url, verdict) {
     const keys = Object.keys(CACHE);
     if (keys.length >= MAX) delete CACHE[keys[0]];

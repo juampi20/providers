@@ -31,8 +31,6 @@ export function normalizeLanguage(lang) {
 /**
  * Búsqueda por título. `postType` no es opcional en la práctica: la API sin él asume `movies` y las series
  * devuelven `{"error":true,"message":"empty"}`.
- * @param {string} query
- * @param {string} postType `movies` | `tvshows` | `animes`
  */
 export async function search(query, postType) {
     const body = await fetchBrowserJson(API + '/search?q=' + encodeURIComponent(query) + '&postType=' + postType, HEADERS);
@@ -47,7 +45,6 @@ export async function episodes(seriesId, season) {
     return (body.data && body.data.posts) || [];
 }
 
-/** @param {Array} list */
 export function pickEpisode(list, season, episode) {
     const found = list.filter((entry) =>
         parseInt(entry.season_number, 10) === parseInt(season, 10) &&
@@ -58,7 +55,6 @@ export function pickEpisode(list, season, episode) {
 /**
  * Embeds del player. Un postId inválido no da 404: devuelve `data.error` con un embed señuelo
  * (`lamovie.org/embed.html`), que hay que descartar en vez de intentar resolver.
- * @param {number|string} postId
  */
 export async function playerEmbeds(postId) {
     const body = await fetchBrowserJson(API + '/player?postId=' + postId + '&demo=0', HEADERS);
@@ -73,7 +69,6 @@ export async function playerEmbeds(postId) {
 /**
  * Busca el post que corresponde, probando los títulos cosechados y los tipos que el sitio usa para ese
  * `mediaType` (las series pueden estar catalogadas como `animes`).
- * @param {string[]} titles
  */
 export async function findPost(titles, year, mediaType) {
     const postTypes = mediaType === 'movie' ? ['movies'] : ['tvshows', 'animes'];
@@ -102,12 +97,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
     const postId = await findPost(meta.titles, meta.year, mediaType);

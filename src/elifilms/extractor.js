@@ -23,7 +23,6 @@ const API_HEADERS = { Accept: 'application/json, text/plain, */*', Referer: HOST
 
 /**
  * El sitio rompe con queries largas, así que se manda lo mínimo: dos palabras de más de un carácter.
- * @param {string} title
  */
 export function searchQuery(title) {
     return String(title || '')
@@ -36,14 +35,12 @@ export function searchQuery(title) {
         .join(' ');
 }
 
-/** @param {string} query */
 export function search(query, mediaType) {
     const postType = mediaType === 'movie' ? 'movies' : 'tvshows';
     return fetchBrowserJson(API + 'search?post_type=' + postType + '&query=' + encodeURIComponent(query) + '&posts_per_page=20', API_HEADERS)
         .then((body) => (body && body.data && body.data.posts) || []);
 }
 
-/** @param {number|string} showId */
 export function episodes(showId) {
     // Los episodios vienen como array directo en `data`, no dentro de una clave con nombre.
     return fetchBrowserJson(API + 'episodes?post_id=' + showId, API_HEADERS)
@@ -64,7 +61,6 @@ export function playerEmbeds(postId) {
     });
 }
 
-/** @param {string} lang */
 export function normalizeLanguage(lang) {
     const text = String(lang || '').toLowerCase();
     if (text.indexOf('castellano') >= 0 || text.indexOf('espa') >= 0) return 'Español';
@@ -74,8 +70,6 @@ export function normalizeLanguage(lang) {
 
 /**
  * Busca el post que corresponde al título, probando cada título cosechado de TMDB.
- * @param {string[]} titles
- * @param {string} year
  */
 export async function findPost(titles, year, mediaType) {
     const collected = [];
@@ -92,7 +86,6 @@ export async function findPost(titles, year, mediaType) {
     return match ? match.id : null;
 }
 
-/** @param {Array} list */
 export function pickEpisode(list, season, episode) {
     const found = list.filter((entry) =>
         parseInt(entry.season_number, 10) === parseInt(season, 10) &&
@@ -111,12 +104,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
     const showId = await findPost(meta.titles, meta.year, mediaType);

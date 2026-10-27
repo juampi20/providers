@@ -27,7 +27,6 @@ export function normalizeLanguage(text) {
 
 /**
  * Resultados de búsqueda: `{ url, title, kind }`.
- * @param {string} query
  */
 export async function search(query) {
     const html = await fetchBrowserText(HOST + '/?s=' + encodeURIComponent(query), HOST + '/');
@@ -76,7 +75,6 @@ export async function ajaxEmbed(option, pageUrl) {
 /**
  * Episodio dentro de la página de la serie: bloque de la temporada pedida y `<a>` cuyo `numerando`
  * corresponde al capítulo.
- * @param {string} html
  */
 export function episodeLink(html, season, episode) {
     const block = new RegExp("class=['\"]se-t.*?['\"]>" + parseInt(season, 10) + '</span>([\\s\\S]*?)(?:</ul>|$)', 'i').exec(html);
@@ -103,12 +101,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
 

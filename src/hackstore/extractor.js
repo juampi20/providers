@@ -24,8 +24,6 @@ const SERVERS = { vimeos: 'Vimeos', streamwish: 'Streamwish' };
 /**
  * Movies answer in data._id; episodes answer one level deeper, in data.episode._id. The title comes back
  * too, and it is what decides whether the slug found the right thing.
- * @param {string} slug
- * @param {'movies'|'episodes'} postType
  */
 export async function findPostId(slug, postType) {
     const body = await fetchBrowserJson(
@@ -39,7 +37,6 @@ export async function findPostId(slug, postType) {
     return { id: entry._id, title: String(entry.title || '') };
 }
 
-/** @param {string} title */
 export function episodeSlug(title, season, episode) {
     return buildSlug(title) + '-temporada-' + parseInt(season, 10) + '-episodio-' + parseInt(episode, 10);
 }
@@ -47,9 +44,6 @@ export function episodeSlug(title, season, episode) {
 /**
  * Every harvested title is tried as a slug at once, and the post is accepted only when the title the API
  * returns matches: a colliding slug would otherwise serve another movie.
- * @param {string[]} titles
- * @param {string} year
- * @param {'movies'|'episodes'} postType
  */
 export async function findPost(titles, year, postType, season, episode) {
     const slugs = slugVariants(titles, 3).map((slug) => {
@@ -74,7 +68,6 @@ function normalizeLanguage(lang) {
 
 /**
  * The player endpoint answers [{ url, lang, quality }] — no HTML to scrape here.
- * @param {number} postId
  */
 export async function fetchEmbeds(postId) {
     const body = await fetchBrowserJson(API + '/player?post_id=' + postId, { Referer: BASE + '/', Origin: BASE });
@@ -94,12 +87,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
     const postType = mediaType === 'movie' ? 'movies' : 'episodes';

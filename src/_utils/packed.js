@@ -7,7 +7,6 @@ import { BROWSER_UA, fetchBrowserText } from './http.js';
 
 /**
  * Unpacks a Dean Edwards `p,a,c,k,e,d` player page, or null when the page carries none.
- * @param {string} html
  */
 export function unpack(html) {
     const unpacker = new JsUnpacker(html);
@@ -16,9 +15,6 @@ export function unpack(html) {
 
 /**
  * Slice of `text` between two markers.
- * @param {string} text
- * @param {string} start
- * @param {string} end
  */
 export function between(text, start, end) {
     const i = text.indexOf(start);
@@ -29,8 +25,6 @@ export function between(text, start, end) {
 
 /**
  * Resolve a link found in a page against the page's own URL.
- * @param {string} ref
- * @param {string} base
  */
 export function resolveUrl(ref, base) {
     if (/^https?:\/\//.test(ref)) return ref;
@@ -40,7 +34,6 @@ export function resolveUrl(ref, base) {
 
 /**
  * Host part of a URL.
- * @param {string} url
  */
 export function hostOf(url) {
     return url.split('/')[2] || '';
@@ -48,7 +41,6 @@ export function hostOf(url) {
 
 /**
  * streamwish mirrors serve an obfuscated loader; vibuxer.com serves the same file as a packed player.
- * @param {string} embedUrl
  */
 export function vibuxerUrl(embedUrl) {
     if (hostOf(embedUrl).indexOf('vibuxer') >= 0) return embedUrl;
@@ -58,8 +50,6 @@ export function vibuxerUrl(embedUrl) {
 /**
  * hls4 segments carry a PNG header that Nuvio's libmpv refuses; nothing is probed, because Nuvio waits
  * for every pending request before showing results and a dead CDN outlasts its 60 s plugin limit.
- * @param {object} links
- * @param {string} embedUrl
  */
 export function playableLinks(links, embedUrl) {
     return ['hls2', 'hls3']
@@ -69,8 +59,6 @@ export function playableLinks(links, embedUrl) {
 
 /**
  * Read the `var links` object out of a packed player and return its playable URLs.
- * @param {string} embedUrl
- * @param {string} referer
  */
 export async function packedLinks(embedUrl, referer) {
     const html = await fetchBrowserText(embedUrl, referer);

@@ -18,7 +18,6 @@ const LANGUAGE_ORDER = ['Latino', 'Español', 'Subtitulado'];
 
 const LANGUAGES = { latino: 'Latino', lat: 'Latino', castellano: 'Español', 'español': 'Español', esp: 'Español', vose: 'Subtitulado', sub: 'Subtitulado', subtitulado: 'Subtitulado' };
 
-/** @param {string} text */
 export function normalizeLanguage(text) {
     const last = String(text || '').replace(/<[^>]*>/g, '').trim().split('-').pop().trim().toLowerCase();
     return LANGUAGES[last] || 'Latino';
@@ -32,7 +31,6 @@ export function sectionUrl(slug, mediaType) {
 /**
  * Busca la ficha probando los slugs de los títulos cosechados. El sitio responde 200 incluso cuando no
  * existe, así que la señal es que el cuerpo traiga opciones de player.
- * @param {string[]} titles
  */
 export async function findPage(titles, mediaType) {
     for (const slug of slugVariants(titles, 4)) {
@@ -44,7 +42,6 @@ export async function findPage(titles, mediaType) {
     return null;
 }
 
-/** @param {string} html */
 export function dataPost(html) {
     const m = /data-post="(\d+)"/.exec(html);
     return m ? m[1] : null;
@@ -53,7 +50,6 @@ export function dataPost(html) {
 /**
  * El episodio se pide por AJAX por temporada y se busca en la lista devuelta: la URL no se puede construir
  * porque el slug del capítulo no sigue el de la serie.
- * @param {string} seriesUrl
  */
 export async function episodeUrl(seriesUrl, postId, season, episode) {
     const response = await fetch(HOST + '/wp-admin/admin-ajax.php', {
@@ -74,7 +70,6 @@ export async function episodeUrl(seriesUrl, postId, season, episode) {
 
 /**
  * Opciones de la ficha: `{ nume, language }`, con `trid`/`trtype` que son de la página, no de cada opción.
- * @param {string} html
  */
 export function playerOptions(html) {
     const params = /\?trembed=(\d+)(?:&#038;|&)trid=(\d+)(?:&#038;|&)trtype=(\d+)/.exec(html);
@@ -103,12 +98,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
     const page = await findPage(meta.titles, mediaType);

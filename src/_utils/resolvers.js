@@ -11,7 +11,6 @@ import { BROWSER_UA, fetchBrowserText, browserHeaders } from './http.js';
 import { between, resolveUrl, hostOf, vibuxerUrl, playableLinks } from './packed.js';
 import { withRealQuality } from './variants.js';
 
-/** @param {string} html */
 function unpack(html) {
     const unpacker = new JsUnpacker(html);
     return unpacker.detect() ? unpacker.unpack() : null;
@@ -23,7 +22,7 @@ function firstM3u8(text) {
     return m ? m[1] : null;
 }
 
-// ── players empaquetados (p,a,c,k,e,d) ─────────────────────────────────────────────────────────────────────
+// players empaquetados (p,a,c,k,e,d)
 
 /** vidhide / dint ezuvio / minochinos: packer con `var links` o hls2/hls4. */
 export async function resolveVidhide(embedUrl) {
@@ -63,7 +62,7 @@ export async function resolveVimeos(embedUrl) {
     return [{ url: resolveUrl(m[1], embedUrl), headers: { 'User-Agent': BROWSER_UA } }];
 }
 
-// ── players que exponen el link en el HTML ────────────────────────────────────────────────────────────────
+// players que exponen el link en el HTML
 
 /** goodstream: `file: "https://….m3u8"` en el HTML o en el packer. */
 export async function resolveGoodstream(embedUrl) {
@@ -193,11 +192,10 @@ export async function resolveWrapperPage(embedUrl) {
     return [{ url: resolveUrl(url, embedUrl), headers: { 'User-Agent': BROWSER_UA, Referer: embedUrl } }];
 }
 
-// ── base64 sin atob (Hermes) ──────────────────────────────────────────────────────────────────────────────
+// base64 sin atob (Hermes)
 
 const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-/** @param {string} text */
 export function decodeBase64(text) {
     let out = '';
     let buffer = 0;
@@ -297,7 +295,6 @@ export async function resolveYourUpload(embedUrl) {
 /**
  * Varios catálogos entregan `embedshortener.co/e/<jwt>` en vez del embed real: el payload lleva el host
  * verdadero, así que desenvolverlo convierte un host opaco en voe/vidhide/streamwish.
- * @param {string} url
  */
 export function unwrapEmbedShortener(url) {
     if (!/embedshortener\.|fkplayer\./i.test(String(url || ''))) return null;
@@ -319,7 +316,7 @@ export function unwrapEmbedShortener(url) {
     return null;
 }
 
-// ── mapa de hosts ────────────────────────────────────────────────────────────────────────────────────────
+// mapa de hosts
 
 const VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
 const STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|bysedika|bysevipa/;

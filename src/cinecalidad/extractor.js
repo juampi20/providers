@@ -25,7 +25,6 @@ const BASE64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/
 
 /**
  * Decoded by hand: Hermes on FireTV has no Buffer, and atob is not guaranteed either.
- * @param {string} text
  */
 export function decodeBase64(text) {
     let out = '';
@@ -44,31 +43,26 @@ export function decodeBase64(text) {
     return out;
 }
 
-/** @param {string} tmdbId */
 export function getTitles(tmdbId) {
     return titlesFor(tmdbId, 'movie');
 }
 
-/** @param {string} slug */
 export function movieUrl(slug) {
     return BASE + '/pelicula/' + slug + '/';
 }
 
 /**
  * The page's `<h1>` carries the title and its release year; that header is what the matcher scores.
- * @param {string} html
  */
 export function pageTitle(html) {
     const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
     return h1 ? splitTitleYear(h1[1].replace(/<[^>]*>/g, '')) : { title: '', year: null };
 }
 
-/** @param {string} html */
 export function pageYear(html) {
     return pageTitle(html).year;
 }
 
-/** @param {string} html */
 export function embedUrls(html) {
     const found = [];
     const re = /data-src="([A-Za-z0-9+/=]{20,})"/g;
@@ -83,8 +77,6 @@ export function embedUrls(html) {
 /**
  * Tries every slug candidate at once and keeps the page the matcher picks: a page whose title or year does
  * not agree is dropped instead of used, because another movie's streams are worse than none.
- * @param {string[]} titleList
- * @param {string} year
  */
 export async function findMoviePage(titleList, year) {
     const candidates = [];
@@ -115,10 +107,6 @@ async function streamsFrom(embedUrl) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- */
 export async function extractStreams(tmdbId, mediaType) {
     if (mediaType !== 'movie') return [];
     const meta = await getTitles(tmdbId);

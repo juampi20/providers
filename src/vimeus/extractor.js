@@ -23,10 +23,6 @@ const LANGUAGE = 'Latino';
 
 /**
  * The page Vimeus answers for one title.
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
  */
 export function embedPageUrl(tmdbId, mediaType, season, episode) {
     const query = '?tmdb=' + encodeURIComponent(tmdbId) + (mediaType === 'movie' ? '' : '&se=' + season + '&ep=' + episode);
@@ -37,7 +33,6 @@ export function embedPageUrl(tmdbId, mediaType, season, episode) {
 /**
  * Pull the JSON payload out of the page. Returns null when the page carries none (layout change, key
  * rejected with a 200 error page, or a title the site does not have).
- * @param {string} html
  */
 export function parseDataScript(html) {
     const m = /<script[^>]*type=["']text\/json["'][^>]*id=["']data["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
@@ -51,7 +46,6 @@ export function parseDataScript(html) {
 
 /**
  * Embeds out of the payload: `[{ url, server }]`, absolute URLs only.
- * @param {object} payload
  */
 export function payloadEmbeds(payload) {
     return ((payload && payload.embeds) || [])
@@ -66,7 +60,6 @@ export function payloadEmbeds(payload) {
 
 /**
  * Fetch the payload for a title, turning the one failure mode that has a name into a clear log line.
- * @param {string} url
  */
 export async function fetchPayload(url) {
     const response = await fetch(url, { headers: browserHeaders(BASE + '/') });
@@ -90,12 +83,6 @@ async function streamsFrom(embedUrl) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const payload = await fetchPayload(embedPageUrl(tmdbId, mediaType, season, episode));
     const embeds = payloadEmbeds(payload).filter((embed) => resolverFor(embed.url));

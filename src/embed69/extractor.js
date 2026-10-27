@@ -42,7 +42,6 @@ async function getImdbIdFromWikidata(tmdbId, mediaType) {
     return row ? row.imdb.value : null;
 }
 
-/** @param {string} imdbId */
 export function embedId(imdbId, mediaType, season, episode) {
     if (mediaType === 'movie') return imdbId;
     return imdbId + '-' + season + 'x' + String(episode).padStart(2, '0');
@@ -50,7 +49,6 @@ export function embedId(imdbId, mediaType, season, episode) {
 
 /**
  * Returns [{ language, server, url }] from an embed69 page, or [] if the layout changed.
- * @param {string} html
  */
 export function parseEmbedPage(html) {
     return parsePowPage(html);
@@ -59,7 +57,6 @@ export function parseEmbedPage(html) {
 /**
  * Titles missing from /f/ (e.g. The 100) only exist on embed69's /video/ page, a plain list of
  * playServerVast('<url>') entries, each tagged with a data-lang index into the language tabs.
- * @param {string} html
  */
 export function parseVideoPage(html) {
     const languages = {};
@@ -75,7 +72,6 @@ export function parseVideoPage(html) {
     return result;
 }
 
-/** @param {string} html */
 export function parsePage(html) {
     return parseEmbedPage(html).concat(parseVideoPage(html));
 }
@@ -99,12 +95,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const imdbId = await getImdbId(tmdbId, mediaType);
     if (!imdbId) throw new Error('No IMDB id for TMDB ' + tmdbId);

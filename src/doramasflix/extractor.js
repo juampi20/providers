@@ -31,7 +31,6 @@ const HEADERS = {
     Referer: SITE + '/'
 };
 
-/** @param {string} query @param {object} variables */
 async function gql(query, variables) {
     const response = await fetch(API, {
         method: 'POST',
@@ -44,7 +43,6 @@ async function gql(query, variables) {
     return body.data || {};
 }
 
-/** @param {string} query */
 export function search(query, mediaType) {
     // Películas y doramas exponen campos de fecha distintos: pedir el del otro tipo es un 400, no un vacío.
     const field = mediaType === 'movie' ? 'searchFullMovies' : 'searchFullDoramas';
@@ -54,32 +52,27 @@ export function search(query, mediaType) {
     return gql(doc, { input: query }).then((data) => (data[field] && data[field].items) || []);
 }
 
-/** @param {string} slug */
 export function episodeBySlug(slug) {
     const doc = 'query EpisodeDetailSlug($slug: String!) { detailEpisode(filter: { slug: $slug }) { _id slug episode_number season_number } }';
     return gql(doc, { slug }).then((data) => data.detailEpisode || null);
 }
 
-/** @param {string} episodeId */
 export function episodeLinks(episodeId) {
     const doc = 'query EpisodeLinksOnline($episode_id: ID!) { getEpisodeLinks(id: $episode_id, app: "' + APP_ID + '") { links_online { server lang link _id } } }';
     return gql(doc, { episode_id: episodeId }).then((data) => (data.getEpisodeLinks && data.getEpisodeLinks.links_online) || []);
 }
 
-/** @param {string} movieId */
 export function movieLinks(movieId) {
     const doc = 'query MovieLinks($movie_id: ID!) { getMovieLinks(id: $movie_id, app: "' + APP_ID + '") { links_online { server lang link _id } } }';
     return gql(doc, { movie_id: movieId }).then((data) => (data.getMovieLinks && data.getMovieLinks.links_online) || []);
 }
 
-/** @param {number|string} code */
 export function languageOf(code) {
     return LANGUAGE_CODES[parseInt(code, 10)] || 'Latino';
 }
 
 /**
  * Los `link` vienen como `https://embedshortener.co/e/<jwt>`; el embed real está adentro.
- * @param {Array} links
  */
 export function unwrapLinks(links) {
     return links
@@ -92,7 +85,6 @@ export function unwrapLinks(links) {
 
 /**
  * El slug del episodio es `<serie>-<S>x<E>` sin ceros: `-1x01` no existe, `-1x1` sí.
- * @param {string} seriesSlug
  */
 export function episodeSlug(seriesSlug, season, episode) {
     return seriesSlug + '-' + parseInt(season, 10) + 'x' + parseInt(episode, 10);
@@ -109,12 +101,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
 

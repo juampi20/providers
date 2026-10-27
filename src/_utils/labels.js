@@ -27,12 +27,6 @@ function seasonEpisodeOf(context) {
  * [formatters](formatters): `name` carries provider, episode, language and server, `quality` travels in its
  * own field because Nuvio draws it on the second line, and `description` repeats the context for clients that
  * show it.
- *
- * @param {string} provider
- * @param {string} language
- * @param {string} server
- * @param {Array<{url: string, quality?: string, resolution?: string, protocol?: string, headers?: object}>} found
- * @param {MediaContext} [context]
  */
 export function labeled(provider, language, server, found, context) {
     // Un archivo directo es la fuente completa; un HLS es una rendition del CDN. Van primero los directos.
@@ -75,8 +69,6 @@ export function labeled(provider, language, server, found, context) {
 /**
  * Vuelve a componer una lista ya etiquetada agregando el contexto de la obra (título, año, temporada y
  * episodio). Se llama al final, en la entrada del provider, donde ese contexto existe.
- * @param {Array} streams
- * @param {MediaContext} context
  */
 export function applyContext(streams, context) {
     if (!streams || !streams.length) return streams;
@@ -100,8 +92,6 @@ export function applyContext(streams, context) {
 
 /**
  * Group embeds by language in priority order; codes outside the order follow in page order.
- * @param {Array<{language: string}>} embeds
- * @param {string[]} order
  */
 export function groupByLanguage(embeds, order) {
     const seen = [];
@@ -119,10 +109,6 @@ export function groupByLanguage(embeds, order) {
 /**
  * Latino first: the first language that resolves ends the call, so the following ones are never fetched and
  * Nuvio's 60 s budget goes to one language instead of all of them.
- *
- * @param {Array<{language: string, embeds: any[]}>} groups
- * @param {number} index
- * @param {(embed: any) => Promise<object[]>} resolveEmbed
  */
 export async function resolveFirstLanguage(groups, index, resolveEmbed) {
     if (index >= groups.length) return [];

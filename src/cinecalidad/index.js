@@ -1,7 +1,3 @@
-/**
- * CineCalidad — provider entry point called by Nuvio.
- */
-
 import { extractStreams, _test } from './extractor.js';
 import { applyContext } from '../_utils/labels.js';
 import { tmdbSettings } from '../_utils/tmdb.js';
@@ -11,12 +7,6 @@ export function onSettings() {
     return tmdbSettings('Required. The site is searched by a slug built from the Spanish title, so the title has to come from TMDB.');
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function getStreams(tmdbId, mediaType, season, episode) {
     try {
         log(mediaType === 'movie' ? `Request: ${mediaType} ${tmdbId}` : `Request: ${mediaType} ${tmdbId}: S${season}E${episode}`);

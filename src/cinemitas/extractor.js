@@ -25,7 +25,6 @@ const LANGUAGES = {
     'subtitulado': 'Subtitulado'
 };
 
-/** @param {string} text */
 export function normalizeLanguage(text) {
     const key = String(text || '').trim().toLowerCase().replace(/\s+/g, ' ');
     return LANGUAGES[key] || LANGUAGES[key.split(' ')[0]] || 'Latino';
@@ -34,7 +33,6 @@ export function normalizeLanguage(text) {
 /**
  * Pide una página y devuelve también la URL final: el sitio redirige slugs viejos y el episodio se arma con
  * el slug canónico, no con el que probamos.
- * @param {string} url
  */
 async function fetchPage(url) {
     const response = await fetch(url, { headers: { 'User-Agent': BROWSER_UA, Accept: 'text/html', 'Accept-Language': 'es-MX,es;q=0.9' }, redirect: 'follow' });
@@ -53,7 +51,6 @@ export function episodeUrl(slug, season, episode) {
 
 /**
  * Opciones de servidor de una ficha: `{ post, nume, type, language }`.
- * @param {string} html
  */
 export function playerOptions(html) {
     const options = [];
@@ -77,8 +74,6 @@ export function playerOptions(html) {
 
 /**
  * DooPlay resuelve el embed por AJAX y exige `Referer` (sin él Cloudflare contesta 406 en HTML, no JSON).
- * @param {{post: string, nume: string, type: string}} option
- * @param {string} pageUrl
  */
 export async function ajaxEmbed(option, pageUrl) {
     const response = await fetch(HOST + '/wp-admin/admin-ajax.php', {
@@ -101,7 +96,6 @@ export async function ajaxEmbed(option, pageUrl) {
 
 /**
  * Busca la ficha probando los slugs que el sitio podría haber usado.
- * @param {string[]} titles
  */
 export async function findPage(titles, year, mediaType) {
     const sections = [];
@@ -128,7 +122,6 @@ function pageCandidate(page) {
 /**
  * La página de la serie lista los episodios, y su slug **no** coincide con el de la serie
  * (`breaking-badd` es la serie, `breaking-bad-1x1` el episodio), así que la URL sale de esa lista.
- * @param {string} seriesUrl
  */
 export async function findEpisodeUrl(seriesUrl, season, episode) {
     const page = await fetchPage(seriesUrl).catch(() => null);
@@ -150,12 +143,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
     const page = await findPage(meta.titles, meta.year, mediaType);

@@ -53,10 +53,6 @@ var seasonTorrents = {
     // The Genius
     1: {
       magnet: "torrent://874fc5daf1c0c4072c635ef9979d48f4400ba8d3"
-      /*fileIdx: {
-        10: 0,
-        1: 9,
-      },*/
     },
     2: {
       magnet: "torrent://2e7ae32a2b8360ec4e14581e034858f794e3620e"

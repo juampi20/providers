@@ -21,7 +21,6 @@ const CJK = /[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/;
 
 /**
  * Fold a title for comparison: lowercase, no accents, no punctuation.
- * @param {string} text
  */
 export function foldTitle(text) {
     return String(text || '').toLowerCase()
@@ -33,7 +32,6 @@ export function foldTitle(text) {
 
 /**
  * Slug built from a title, for sites that address content as `/pelicula/<slug>/`.
- * @param {string} text
  */
 export function buildSlug(text) {
     return foldTitle(text).replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -41,7 +39,6 @@ export function buildSlug(text) {
 
 /**
  * Split `El Origen (2010)` into the title and the year a page or API hands back.
- * @param {string} text
  */
 export function splitTitleYear(text) {
     const source = String(text || '');
@@ -52,7 +49,6 @@ export function splitTitleYear(text) {
     };
 }
 
-/** @param {string} text */
 export function stripTrailingNumber(text) {
     return String(text || '').replace(/\s+\d+$/, '').trim();
 }
@@ -64,8 +60,6 @@ function words(text) {
 /**
  * Jaccard over word sets, plus a bonus when every query word is present and a penalty for words the
  * candidate adds ("origen" must not match "los miserables el origen").
- * @param {string} a
- * @param {string} b
  */
 export function titleSimilarity(a, b) {
     const wa = words(a);
@@ -88,10 +82,6 @@ export function titleSimilarity(a, b) {
 /**
  * Pick the candidate whose title (and year, and season) best matches any harvested title.
  * Returns null below TITLE_MATCH_THRESHOLD.
- * @param {string[]} titles
- * @param {string} year
- * @param {Array<{title: string, year?: string}>} candidates
- * @param {{season?: number|string}} [options]
  */
 export function bestTitleMatch(titles, year, candidates, options = {}) {
     const variants = [];
@@ -145,8 +135,6 @@ export function bestTitleMatch(titles, year, candidates, options = {}) {
 /**
  * Every title a site might have used for this id — Spanish, original and the regional alternatives — in
  * three parallel requests, because each one is paid for out of Nuvio's 60 s budget.
- * @param {string} tmdbId
- * @param {string} mediaType
  */
 // Wikidata limita el ritmo (429): se guarda lo ya resuelto mientras el plugin viva.
 const TITLE_CACHE = {};
@@ -198,8 +186,6 @@ const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)
 /**
  * Títulos desde Wikidata por id de TMDB, sin key. Es el camino que hace que un provider que busca por
  * título funcione sin que el usuario pegue nada.
- * @param {string} tmdbId
- * @param {string} mediaType
  */
 export async function titlesFromWikidata(tmdbId, mediaType) {
     const prop = mediaType === 'movie' ? 'P4947' : 'P4983';
@@ -232,8 +218,6 @@ export async function titlesFromWikidata(tmdbId, mediaType) {
 
 /**
  * Deduplicated slugs from every harvested title; capped because each one costs a request.
- * @param {string[]} titles
- * @param {number} [limit]
  */
 export function slugVariants(titles, limit = 6) {
     const out = [];

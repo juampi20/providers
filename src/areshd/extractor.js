@@ -20,7 +20,6 @@ const LANGUAGE_ORDER = ['Latino', 'Español', 'Subtitulado'];
 
 const LANGUAGES = { latino: 'Latino', castellano: 'Español', 'español': 'Español', subtitulado: 'Subtitulado', vose: 'Subtitulado' };
 
-/** @param {string} text */
 function slugToTitle(text) {
     return String(text || '').replace(/-/g, ' ').trim();
 }
@@ -28,7 +27,6 @@ function slugToTitle(text) {
 /**
  * Resultados de búsqueda: `{ slug, kind, title }`, con el título derivado del slug porque el `alt` de la
  * imagen no siempre está en el mismo orden.
- * @param {string} query
  */
 export async function search(query, mediaType) {
     const kind = mediaType === 'movie' ? 'pelicula' : 'serie';
@@ -52,7 +50,6 @@ export function pageUrl(slug, mediaType, season, episode) {
 
 /**
  * Lee la ficha: una lista de idiomas y, por idioma, sus servidores con el `data-tr` del player.
- * @param {string} html
  */
 export function parsePage(html) {
     const languages = [...html.matchAll(/<li class="pres"><a class="playr">([^<]+)<\/a><\/li>/g)]
@@ -90,12 +87,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
 

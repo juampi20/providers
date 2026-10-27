@@ -17,7 +17,6 @@ const HOST = 'https://megadede.mobi';
 
 /**
  * Película: `/vidurl/<imdb>/`. Episodio: `/vidurl/<imdb>-<S>x<EE>/`, con el episodio a dos dígitos.
- * @param {string} imdbId
  */
 export function vidurlPath(imdbId, mediaType, season, episode) {
     if (mediaType === 'movie') return '/vidurl/' + imdbId + '/';
@@ -35,12 +34,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const imdbId = await imdbIdFor(tmdbId, mediaType);
     if (!imdbId) throw new Error('TMDB has no IMDb id for ' + mediaType + ' ' + tmdbId);

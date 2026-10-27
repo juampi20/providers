@@ -18,7 +18,6 @@ export function tmdbApiKey() {
 
 /**
  * The field Nuvio renders in the plugin settings and hands back in `SCRAPER_SETTINGS`.
- * @param {string} description
  */
 export function tmdbSettings(description) {
     return [{
@@ -33,8 +32,6 @@ export function tmdbSettings(description) {
 
 /**
  * One TMDB endpoint as JSON.
- * @param {string} path e.g. `/movie/603?language=es-MX`
- * @param {string} key
  */
 export function tmdbGet(path, key) {
     const separator = path.indexOf('?') >= 0 ? '&' : '?';
@@ -44,8 +41,6 @@ export function tmdbGet(path, key) {
 /**
  * The IMDb id for a TMDB id, which is what the embed69-family sites address titles by.
  * Returns null when TMDB has none (the key is bad, or the title is not on IMDb).
- * @param {string} tmdbId
- * @param {string} mediaType
  */
 export async function imdbIdFor(tmdbId, mediaType) {
     const key = tmdbApiKey();

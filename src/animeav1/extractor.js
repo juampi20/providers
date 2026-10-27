@@ -22,7 +22,6 @@ const HEADERS = { 'User-Agent': BROWSER_UA, Accept: 'text/html,application/json'
 /**
  * Resultados del catálogo: `{ slug, title, kind }`. El `href` del listado viene **después** del `<h3>`, así
  * que se parte por artículo en vez de buscar un orden fijo.
- * @param {string} query
  */
 export async function search(query) {
     const response = await fetch(HOST + '/catalogo?search=' + encodeURIComponent(query), { headers: HEADERS });
@@ -43,8 +42,6 @@ export async function search(query) {
 
 /**
  * Payload de un episodio (o de la película, que va como episodio 1).
- * @param {string} slug
- * @param {number} number
  */
 export async function payload(slug, number) {
     const response = await fetch(HOST + '/media/' + slug + '/' + parseInt(number, 10) + '/__data.json', { headers: HEADERS });
@@ -59,7 +56,6 @@ export async function payload(slug, number) {
 /**
  * Camina los índices de devalue: `arr[0].embeds` → `{ SUB: i, DUB: i }`, `arr[i]` → lista de índices,
  * cada item `{ server, url }` con sus valores también indexados.
- * @param {Array} arr
  */
 export function parseEmbeds(arr) {
     const schema = arr && arr[0];
@@ -95,8 +91,6 @@ export function declaredSeason(slug) {
  * Ordena los candidatos por temporada: primero el que la declara igual a la pedida, después los que no
  * declaran ninguna (que son la temporada 1) y último el de otra temporada. El sitio devuelve primero la
  * temporada que está en emisión, así que sin esto una búsqueda de la 1 termina en la 2.
- * @param {Array<{slug: string}>} candidates
- * @param {number|string} season
  */
 export function seasonCandidates(candidates, season) {
     const wanted = parseInt(season, 10) || 1;
@@ -125,12 +119,6 @@ async function resolveEmbed(embed) {
     }
 }
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
 export async function extractStreams(tmdbId, mediaType, season, episode) {
     const meta = await titlesFor(tmdbId, mediaType);
 

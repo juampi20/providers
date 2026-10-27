@@ -1,18 +1,6 @@
-/**
- * Template Provider
- * Main entry point.
- */
-
 import { extractStreams } from './extractor.js';
 import log from './log.js';
 
-/**
- * Main function called by Nuvio
- * @param {string} tmdbId - TMDB ID of the media
- * @param {string} mediaType - 'movie' or 'tv'
- * @param {number} season - Season number (for TV)
- * @param {number} episode - Episode number (for TV)
- */
 export async function getStreams(tmdbId, mediaType, season, episode) {
     try {
         if (mediaType === 'movie') {
@@ -21,7 +9,6 @@ export async function getStreams(tmdbId, mediaType, season, episode) {
             log(`Request: ${mediaType} ${tmdbId}: S${season}E${episode}`);
         }
 
-        // Call your extraction logic
         const streams = await extractStreams(tmdbId, mediaType, season, episode);
 
         return streams;

@@ -18,7 +18,6 @@ function deriveKey(challenge, difficulty, salt) {
     return CryptoJS.SHA256(challenge + nonce + salt);
 }
 
-/** @param {string} base64 @param {object} key */
 export function decryptLink(base64, key) {
     try {
         const raw = CryptoJS.enc.Base64.parse(base64);
@@ -52,8 +51,6 @@ export function hasPuzzle(html) {
 /**
  * Devuelve los embeds descifrados de una página con PoW: `[{ language, server, url }]`.
  * Lista vacía cuando la página no trae puzzle o el layout cambió.
- * @param {string} html
- * @param {{ skipServers?: RegExp }} [options]
  */
 export function parsePowPage(html, options = {}) {
     const challenge = between(html, "const POW_CHALLENGE = '", "';") || between(html, 'POW_CHALLENGE = "', '";');
@@ -85,8 +82,6 @@ export const POW_LANGUAGE_ORDER = ['LAT', 'ESP', 'SUB'];
  * The flow the embed69-family sites share: IMDb id in, decrypted embeds out.
  * `path` is the site's own route for a title (`/vidurl/<imdb>/…`); its season/episode spelling differs per
  * site, so the caller builds it.
- * @param {string} host
- * @param {string} path
  */
 export async function fetchPowEmbeds(host, path) {
     const response = await fetch(host + path, {

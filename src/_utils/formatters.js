@@ -101,8 +101,6 @@ function line(parts, fields) {
 
 /**
  * Compone las líneas de un stream con el formatter pedido.
- * @param {StreamFields} fields
- * @param {string} [name]
  */
 export function formatStream(fields, name = DEFAULT_FORMATTER) {
     const formatter = FORMATTERS[name] || FORMATTERS[DEFAULT_FORMATTER];
