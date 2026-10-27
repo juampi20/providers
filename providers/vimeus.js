@@ -196,12 +196,34 @@ function resolveStreamWish(embedUrl) {
 }
 function resolveVimeos(embedUrl) {
   return __async(this, null, function* () {
-    const referer = "https://vimeos.net/";
-    const html = yield fetchBrowserText(embedUrl, referer);
+    const html = yield fetchBrowserText(embedUrl, "https://vimeos.net/");
     const script = unpack(html) || html;
     const m = /["']([^"']+\.m3u8[^"']*)['"]/i.exec(script);
     if (!m) return [];
-    return [{ url: resolveUrl(m[1], embedUrl), headers: { "User-Agent": BROWSER_UA, Referer: referer } }];
+    const master = resolveUrl(m[1], embedUrl);
+    const headers = { "User-Agent": BROWSER_UA };
+    return [{ url: yield bestVariant(master, headers), headers }];
+  });
+}
+function bestVariant(masterUrl, headers) {
+  return __async(this, null, function* () {
+    let body;
+    try {
+      body = yield fetchBrowserText(masterUrl);
+    } catch (e) {
+      return masterUrl;
+    }
+    const lines = body.split("\n");
+    const variants = [];
+    lines.forEach((line, i) => {
+      if (line.indexOf("#EXT-X-STREAM-INF") !== 0) return;
+      const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
+      const uri = lines.slice(i + 1).filter((l) => l && l.charAt(0) !== "#")[0];
+      if (uri) variants.push({ bandwidth: bandwidth ? parseInt(bandwidth[1], 10) : 0, url: resolveUrl(uri.trim(), masterUrl) });
+    });
+    if (variants.length < 2) return masterUrl;
+    variants.sort((a, b) => b.bandwidth - a.bandwidth);
+    return variants[0].url;
   });
 }
 var RESOLVERS = {

@@ -96,15 +96,48 @@ export function resolveStreamWish(embedUrl) {
 
 /**
  * Vimeos serves a packed player too, but its m3u8 sits in the unpacked source as a bare string.
+ *
+ * The CDN hands out a master with two variants and, on many titles, an `#EXT-X-MEDIA` audio group the
+ * variants reference with `AUDIO="audio0"`. A player that mishandles that master plays audio and shows no
+ * image, so the master is resolved one step further into its highest variant: those carry audio and video
+ * muxed in the same TS (verified on four titles), which is the single-playlist shape that plays everywhere.
+ * Falls back to the master when it cannot be read. The stream headers carry only the browser User-Agent:
+ * the CDN rejects a `Referer` on some edges.
  * @param {string} embedUrl
  */
 export async function resolveVimeos(embedUrl) {
-    const referer = 'https://vimeos.net/';
-    const html = await fetchBrowserText(embedUrl, referer);
+    const html = await fetchBrowserText(embedUrl, 'https://vimeos.net/');
     const script = unpack(html) || html;
     const m = /["']([^"']+\.m3u8[^"']*)['"]/i.exec(script);
     if (!m) return [];
-    return [{ url: resolveUrl(m[1], embedUrl), headers: { 'User-Agent': BROWSER_UA, Referer: referer } }];
+    const master = resolveUrl(m[1], embedUrl);
+    const headers = { 'User-Agent': BROWSER_UA };
+    return [{ url: await bestVariant(master, headers), headers }];
+}
+
+/**
+ * The highest-bandwidth playlist listed by a master, or the master itself when there is nothing to pick.
+ * @param {string} masterUrl
+ * @param {object} headers
+ */
+async function bestVariant(masterUrl, headers) {
+    let body;
+    try {
+        body = await fetchBrowserText(masterUrl);
+    } catch (e) {
+        return masterUrl;
+    }
+    const lines = body.split('\n');
+    const variants = [];
+    lines.forEach((line, i) => {
+        if (line.indexOf('#EXT-X-STREAM-INF') !== 0) return;
+        const bandwidth = /BANDWIDTH=(\d+)/.exec(line);
+        const uri = lines.slice(i + 1).filter((l) => l && l.charAt(0) !== '#')[0];
+        if (uri) variants.push({ bandwidth: bandwidth ? parseInt(bandwidth[1], 10) : 0, url: resolveUrl(uri.trim(), masterUrl) });
+    });
+    if (variants.length < 2) return masterUrl;
+    variants.sort((a, b) => b.bandwidth - a.bandwidth);
+    return variants[0].url;
 }
 
 /** Hosts this repo knows how to turn into a playable link. */
