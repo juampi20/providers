@@ -186,3 +186,22 @@ test('playableEmbed sends streamwish mirrors to vibuxer.com and keeps vidhide as
     assert.strictEqual(_test.playableEmbed({ server: 'vidhide', url: 'https://vidhidepro.com/v/vezyplqzsoso' }), 'https://vidhidepro.com/v/vezyplqzsoso');
     assert.strictEqual(_test.playableEmbed({ server: 'voe', url: 'https://voe.sx/e/hqou76go1rwg' }), null);
 });
+
+test('playableLinks skips probing where Nuvio has no setTimeout, since a dead CDN there outlasts the 60 s plugin limit', () => {
+    const originalFetch = global.fetch;
+    const originalSetTimeout = global.setTimeout;
+    const calls = [];
+    global.fetch = (url) => { calls.push(url); return new Promise(() => {}); };
+    global.setTimeout = undefined;
+    let pending;
+    try {
+        pending = _test.playableLinks({ hls2: 'https://a.example/master.m3u8', hls3: 'https://b.example/master.txt', hls4: '/stream/x/master.m3u8' }, 'https://e.example/v/x', {});
+    } finally {
+        global.setTimeout = originalSetTimeout;
+    }
+    return pending.then((result) => {
+        global.fetch = originalFetch;
+        assert.deepStrictEqual(result, ['https://a.example/master.m3u8', 'https://b.example/master.txt']);
+        assert.deepStrictEqual(calls, []);
+    }, (e) => { global.fetch = originalFetch; throw e; });
+});

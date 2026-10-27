@@ -221,11 +221,12 @@ function probeHls(master, headers) {
 }
 
 // hls4's PNG-wrapped segments never play in Nuvio's libmpv, and hls2/hls3 CDNs fail or hang, so probe hls2/hls3
-// in parallel and keep the clean ones. Without setTimeout (desktop 1.1.21) it waits for Nuvio's own fetch timeouts.
+// in parallel and keep the clean ones. Without setTimeout (desktop 1.1.21) a dead CDN takes 30 s+ to fail, so skip probing.
 function playableLinks(links, embedUrl, headers, deadlineMs) {
     const candidates = ['hls2', 'hls3']
         .filter(function (k) { return links[k]; })
         .map(function (k) { return resolveUrl(links[k], embedUrl); });
+    if (typeof setTimeout !== 'function') return Promise.resolve(candidates);
     return new Promise(function (resolve) {
         const passed = [];
         let pending = candidates.length;
@@ -234,7 +235,7 @@ function playableLinks(links, embedUrl, headers, deadlineMs) {
             if (!done) { done = true; resolve(passed.slice()); }
         }
         if (!pending) return finish();
-        if (typeof setTimeout === 'function') setTimeout(finish, deadlineMs === undefined ? 5000 : deadlineMs);
+        setTimeout(finish, deadlineMs === undefined ? 5000 : deadlineMs);
         candidates.forEach(function (url) {
             probeHls(url, headers).then(function (kind) {
                 if (kind === 'ts') passed.push(url);
