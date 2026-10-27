@@ -1,67 +1,260 @@
 # Nuvio Providers
 
-Personal provider repository for Nuvio.
+Colección de providers de streaming para la app Nuvio. Cada provider es un módulo JavaScript que busca streams en un sitio y los devuelve en el formato que Nuvio espera.
 
-## Providers
+**[Guía completa de desarrollo](DOCUMENTATION.md)**
 
-| Provider | File | Source | Servers |
-|----------|------|--------|---------|
-| Embed69 | `providers/embed69.js` | embed69.org player (`/f/` and `/video/`), el que usa sololatino.net (Latino, Castellano, Subtitulado) | vidhide, streamwish, voe, … |
-| HackStore | `providers/hackstore.js` | hackstore2.com REST API (Latino, Castellano, Subtitulado) | vimeos, streamwish |
-| CineCalidad | `providers/cinecalidad.js` | cinecalidad.vg movie slugs — Latino | vimeos, streamwish |
-| Vimeus | `providers/vimeus.js` | vimeus.com, keyed by TMDB id — no API key needed, Latino | vimeos, streamwish, vidhide |
+## Inicio rápido
 
-## Setup
+### Usarlo en Nuvio
 
-1. In Nuvio, open the plugins settings (not addons) and add this repository:
-   `https://raw.githubusercontent.com/juampi20/providers/main/manifest.json`
-2. Optional: paste your TMDB v3 key in Embed69's settings. Nuvio desktop 1.1.21 does not share its own key with plugins, so without yours the provider looks titles up in Wikidata, which misses some. The key stays in Nuvio, never in this repo.
+1. Abrí **Nuvio** > **Settings** > **Plugins**.
+2. Agregá la URL de este repositorio:
 
-## Adding a provider
+   ```
+   https://raw.githubusercontent.com/juampi20/providers/main/manifest.json
+   ```
 
-1. Copiá el template: `cp -r src/_template src/<name>` y renombrá `PROVIDER_NAME`.
-   - `index.js` — la entrada que llama Nuvio; exporta `getStreams` y `onSettings`, atrapa errores y delega.
-   - `extractor.js` — el flujo del sitio: ids, URLs, parseo, qué servidores confía.
-   - `log.js` — logger con prefijo `[Proveedor]`.
-   - `scraper.json` — la entrada del manifest (`id`, `name`, `description`, `version`, `supportedTypes`, …); se mergea sobre `scraper-defaults.json` y el `filename` se deriva.
-2. Lo compartido va a `src/_utils/`: `http.js`, `packed.js` (players empaquetados y resolvers), `quality.js`, `matcher.js` (títulos), `labels.js` (forma del stream y corte por idioma), `tmdb.js`, `jsunpack.js`, `useragent.js`.
-3. `npm run build` buildea a `providers/<name>.js` y regenera el `scrapers` de `manifest.json`.
-4. Probá el provider en el Plugin Tester (o con un `test.js` temporal) antes de dar por buena la versión.
+3. Refrescá y habilitá los providers que quieras usar.
 
-`providers/*.js` y el bloque `scrapers` de `manifest.json` son salida de build: se edita `src/`, nunca ellos.
+### Modo desarrollador
 
-Nuvio runs providers in QuickJS on desktop and Hermes on TV/mobile, wrapped in a function. For TMDB calls, read the global `TMDB_API_KEY` that Nuvio injects and never declare your own, since a local one hides it. Older builds inject none, so let users save a key through `onSettings` (it comes back in `SCRAPER_SETTINGS`, and the manifest entry needs `hasSettings: true`) and keep a fallback that needs no key.
+Para probar cambios locales, `npm start` levanta el repo por HTTP en el puerto 3000.
 
-HackStore and CineCalidad are the exception: both address titles by a slug built from the Spanish title and year, so they need TMDB metadata and return nothing without a key. Embed69 falls back to Wikidata, which needs none, and Vimeus needs no key at all — it is addressed by TMDB id.
+> Necesitás un **build de desarrollo** de Nuvio. Algunos providers andan en Node y fallan en el runtime real de la app.
 
-FireTV runs providers on Hermes, which has no `Buffer` and may lack `AbortController`, `String.prototype.normalize` and newer `Promise` helpers. Providers fold accents with a table and build URLs by hand. `async`/`await` is fine in `src/` even though Hermes rejects it in plugins: esbuild lowers it to generators on the way into `providers/`, which is why the built file is what gets tested.
+- En la app: **Settings** > **Developer** > **Plugin Tester**.
+- *Repo Tester*: `http://192.168.1.5:3000/manifest.json` (la IP de tu máquina).
+- *Individual Plugin*: la URL de un provider compilado, por ejemplo `http://192.168.1.5:3000/providers/vimeus.js`.
 
-## Source layout
+### La key de TMDB
 
-Cada provider vive en su carpeta: `src/<provider>/{index.js, extractor.js, log.js, scraper.json}`. Lo compartido está en `src/_utils/` y el punto de partida para uno nuevo es `src/_template/`. `build.js` (esbuild, `target: es2016`) buildea cada uno a `providers/<provider>.js` — lo que Nuvio descarga — y regenera `manifest.json` desde los `scraper.json` + `scraper-defaults.json`.
+Nuvio inyecta `TMDB_API_KEY` en el runtime y `src/_utils/tmdb.js` la lee de ahí. Si tu build no la comparte con los plugins, pegá una key v3 en la configuración de los providers que la pidan. La key queda en Nuvio y nunca entra al repo.
 
-**`providers/` y el bloque `scrapers` de `manifest.json` son salida de build — se edita `src/` y se rebuildea.** `crypto-js` y `cheerio` quedan **externos**: los provee el runtime de Nuvio, así que el artifact pesa ~17 KB en vez de 200 KB y hace `require("crypto-js")`. `async`/`await` está permitido en `src/`: esbuild lo baja a generadores para el target es2016.
+Sin key no todo anda igual:
 
-`src/baechu-squad/` es un provider de ejemplo que vino con el template (variedades coreanas, en inglés): queda deshabilitado y no forma parte del catálogo latino.
+- **Vimeus** no la necesita: direcciona los títulos por el id de TMDB.
+- **Embed69** busca el id de IMDb y cae a Wikidata cuando no hay key.
+- **EntrePeliculasySeries** y **MegaDede** piden el id de IMDb a TMDB, así que sin key no devuelven nada.
+- **HackStore** arma el slug de películas con título y año. Wikidata no da el año, así que sin key solo encuentra series.
+- **CineCalidad** busca por slug de título y compara el año de la ficha cuando lo tiene. Anda sin key, con menos puntería.
+- El resto resuelve títulos por Wikidata. Wikidata limita por ráfagas y devuelve 429, por eso `titlesFor` cachea lo ya resuelto mientras el plugin viva.
 
-## Development
+## Estructura del proyecto
 
-```sh
-npm install
-npm run build                       # src/<provider>/ -> providers/*.js + manifest.json (readable output)
-npm run build:min                   # same, minified, for a release
-npm start                           # local server on :3000 for Nuvio's Plugin Tester
+```
+nuvio-providers/
+├── src/                          # Código fuente de los providers
+│   ├── _template/                # Template para uno nuevo
+│   ├── _utils/                   # Código compartido (http, resolvers, matcher, ...)
+│   └── provider-one/
+│       ├── index.js              # Entry point que llama Nuvio
+│       ├── extractor.js          # Flujo del sitio
+│       ├── log.js
+│       └── scraper.json          # Entrada del manifest para este provider
+│
+├── providers/                    # Output del build: lo que Nuvio descarga
+│   ├── provider-one.js
+│   └── provider-two.js
+│
+├── manifest.json                 # Manifest generado (scrapers + metadata del repo)
+├── scraper-defaults.json         # Defaults de las entradas generadas
+├── build.js                      # Build con esbuild y generación del manifest
+├── server.js                     # Servidor local para el Plugin Tester
+└── docs/
+    └── LICENSE-gpl-3.0.txt       # Licencia de la guía vendorizada
 ```
 
-Antes de publicar, se prueba **en la app**: `npm start` levanta el repo por HTTP y un Nuvio *debug build* lo consume desde **Settings > Developer Section > Plugin Tester** — el *Repo Tester* apunta a la URL del manifest, el *Individual Plugin* a la URL de un provider compilado. Ese tester corre en el mismo Hermes que la app final, así que es la única prueba que vale para el runtime; para una comprobación suelta contra el sitio real, un `test.js` temporal en la raíz (como propone la guía) alcanza.
+`providers/` y el bloque `scrapers` de `manifest.json` son salida de build. Se edita `src/` y se rebuildea: un cambio a mano en `providers/` se pierde en el próximo build.
 
-El workflow completo de providers de Nuvio está en [`DOCUMENTATION.md`](DOCUMENTATION.md) (copia de `autovalue/nuvio-plugins`, GPL-3.0) — es la referencia del contrato, y su encabezado anota en qué se diferencia este repo.
+## Build
 
-Para una comprobación ad-hoc contra el sitio real, un `test.js` temporal en la raíz:
+### Default
+
+```bash
+npm run build
+```
+
+Compila cada carpeta de `src/` (menos `_template` y `_utils`) con esbuild en `providers/<provider>.js` y regenera `manifest.json`.
+
+### Output
+
+```bash
+node build.js --out-dir build
+```
+
+Escribe en `build/` en vez de la raíz del repo. La salida tiene que quedar junto al manifest para que las rutas `providers/...` resuelvan.
+
+### Metadata por provider
+
+Cada `src/<provider>/scraper.json` se mergea sobre `scraper-defaults.json`. Si falta un campo, el build cae al template del `manifest.json` actual y después a los valores internos (tipos soportados, formatos, `enabled`). El `id` sale del campo `id` o del nombre de la carpeta, y `filename` se deriva de la salida.
+
+### Comandos
+
+```bash
+# Todos los providers, sin minificar
+npm run build
+
+# Todos, minificados, para publicar
+npm run build:min
+
+# Uno solo
+node build.js cinecalidad
+
+# Varios
+node build.js cinecalidad hackstore
+
+# Output propio
+node build.js --out-dir build
+```
+
+Un build por provider regenera `manifest.json` solo con los providers compilados en esa corrida. Antes de commitear, corré `npm run build` completo para que el manifest vuelva a tener las 15 entradas.
+
+## Publicación
+
+Este repo no usa GitHub Pages ni un workflow de publicación. Nuvio lee el manifest crudo de `main`:
+
+1. `npm run build` (o `npm run build:min` si querés archivos más chicos).
+2. Commiteá `src/`, `providers/` y `manifest.json` juntos.
+3. Pusheá a `main`. La URL del manifest no cambia.
+
+## Desarrollo
+
+Este repo usa solo providers multi-archivo. La opción de un archivo suelto en `providers/` no aplica porque ese directorio se regenera en cada build.
+
+### Crear un provider
+
+1. Copiá el template:
+
+   ```bash
+   cp -r src/_template src/<name>
+   ```
+
+2. Renombrá `PROVIDER_NAME` en `extractor.js` y completá `scraper.json` con `id`, `name`, `description`, `version` y `supportedTypes`.
+
+3. Escribí el extractor: URLs del sitio, parseo, qué embeds acepta. Si necesitás un helper nuevo, sumalo a `src/_utils/` solo cuando lo use un segundo sitio.
+
+4. Buildeá:
+
+   ```bash
+   node build.js <name>
+   ```
+
+5. Probá en el Plugin Tester antes de dar la versión por buena.
+
+### Restricciones del runtime
+
+Nuvio corre los providers en QuickJS en desktop y en Hermes en TV y mobile, envueltos en una función. Hermes no tiene `Buffer` y puede no tener `AbortController`, `String.prototype.normalize` ni los helpers nuevos de `Promise`. Por eso los providers pliegan acentos con una tabla y arman las URLs a mano.
+
+`async`/`await` sí se permite en `src/`: esbuild lo baja a generadores al compilar. Lo que se prueba siempre es el archivo de `providers/`, no la fuente.
+
+`cheerio`, `crypto-js`, `axios` y los paquetes de cheerio para React Native quedan externos en el bundle porque los trae el runtime.
+
+## Testing
+
+El test que vale es en la app, con el Plugin Tester contra el servidor local. Para una comprobación suelta contra el sitio real, un script temporal en la raíz:
 
 ```js
+// test-vimeus.js
 const { getStreams } = require('./providers/vimeus.js');
-getStreams('27205', 'movie').then(console.log);
+
+getStreams('27205', 'movie').then((streams) => {
+  console.log('Streams:', streams.length);
+  console.log(streams[0]);
+}).catch(console.error);
 ```
 
-Embed69 asks `embed69.org/video/<id>` for each title. That page redirects to the encrypted `/f/` page when the title is there, and otherwise lists the servers in plain HTML (The 100 is one such title). Each call returns a single language: embeds are grouped and resolved latino → castellano → subtitulado, and the first language that yields a playable link ends the search, so the others are never fetched. Streamwish links are read through vibuxer.com, which serves the same packed player as vidhide. Links are returned without probing them: Nuvio waits for every pending request before it shows a plugin's results, and a dead CDN can hang past its 60 s plugin limit. It never returns hls4: those segments carry a PNG header that Nuvio's player (libmpv) refuses. Los embeds se resuelven por host con `src/_utils/resolvers.js`: vimeos, streamwish, vidhide, VOE, goodstream, uqload, audinifer, ok.ru y doodstream.
+```bash
+node test-vimeus.js
+```
+
+`test/`, `test.js` y `_test_*.js` están en `.gitignore`, así que no se publican.
+
+## Formato del stream
+
+Cada provider devuelve un array de streams:
+
+```js
+{
+  name: "CineCalidad",                   // primera línea que dibuja Nuvio
+  quality: "1080p • Vimeos • Latino",    // segunda línea
+  title: "",                             // espejo del idioma; Nuvio no lo muestra
+  description: "El origen · 2010 · ...", // detalle para logs y clientes que lo usen
+  url: "https://.../master.m3u8",
+  headers: { Referer: "https://cinecalidad.vg/" },
+  fields: {
+    provider: "CineCalidad",
+    server: "Vimeos",
+    language: "Latino",
+    quality: "1080p",
+    resolution: "1920x1080",
+    protocol: "hls",
+    index: 1,
+    title: "El origen",
+    year: "2010",
+    seasonEpisode: ""
+  }
+}
+```
+
+`src/_utils/formatters.js` decide qué entra en cada línea (`standard`, `compact`, `verbose`). `src/_utils/labels.js` arma el objeto.
+
+### Qué garantiza cada provider
+
+- **Un idioma por llamada.** Los embeds se agrupan por idioma en orden latino primero y la búsqueda corta en el primero que resuelve, para no gastar los 60 s de Nuvio en todos.
+- **Nunca `hls4`.** Los segmentos de ese tag traen cabecera PNG y libmpv, el player de Nuvio, los rechaza.
+- **La calidad es la medida.** `variants.js` lee el master HLS y etiqueta con la resolución real de la mejor variante, no con lo que diga la URL.
+- **Se descarta lo que falló.** `verify.js` usa el request que el resolver ya hizo. No se sondea ningún link de más, porque Nuvio espera a todos los pedidos pendientes antes de mostrar resultados.
+
+## Módulos disponibles
+
+Los providers acceden a estos módulos por `require()`:
+
+| Módulo | Uso |
+|--------|-----|
+| `cheerio-without-node-native` | Parsing de HTML |
+| `crypto-js` | Encryption / decryption (páginas con proof of work) |
+| `axios` | Requests HTTP |
+
+`fetch` y `console` están disponibles como globales.
+
+## Opciones del manifest
+
+Cada entrada del manifest se genera desde `scraper.json`. Estos son los campos que usa este repo:
+
+```json
+{
+  "id": "cinemitas",
+  "name": "Cinemitas",
+  "description": "Movies and series in Latin Spanish via cinemitas.org (vimeos, uqload, vimeus).",
+  "version": "1.0.0",
+  "author": "chester",
+  "supportedTypes": ["movie", "tv"],
+  "filename": "providers/cinemitas.js",
+  "enabled": true,
+  "logo": "https://www.google.com/s2/favicons?domain=cinemitas.org&sz=128",
+  "contentLanguage": ["es"],
+  "formats": ["m3u8"],
+  "limited": false,
+  "disabledPlatforms": [],
+  "hasSettings": true,
+  "supportsExternalPlayer": true
+}
+```
+
+`hasSettings` tiene que ser `true` si el provider exporta `onSettings`. Si no lo exporta, Nuvio no muestra campos y no hay dónde guardar la key.
+
+## Licencia
+
+Este repo no incluye un archivo de licencia propio. `DOCUMENTATION.md` es una copia vendorizada de [autovalue/nuvio-plugins](https://github.com/autovalue/nuvio-plugins) bajo **GNU General Public License v3.0**; el texto está en [`docs/LICENSE-gpl-3.0.txt`](docs/LICENSE-gpl-3.0.txt).
+
+## Disclaimer
+
+- Este repositorio no aloja contenido.
+- Los providers consultan contenido público de sitios de terceros.
+- Cada usuario es responsable de cumplir la ley de su jurisdicción.
+- Los reclamos de DMCA van al sitio que aloja el contenido, no a este repo.
+
+## Agradecimientos
+
+Gracias a [autovalue/nuvio-plugins](https://github.com/autovalue/nuvio-plugins) por la guía de desarrollo y por el template del que salió `src/baechu-squad/`.
