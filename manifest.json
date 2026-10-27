@@ -1,18 +1,46 @@
 {
   "name": "Chester Providers",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "scrapers": [
     {
       "id": "sololatino",
       "name": "SoloLatino",
-      "description": "Movies and series in Latin Spanish, Castilian and subtitled, via embed69 (vidhide).",
-      "version": "1.0.0",
+      "description": "Movies and series in Latin Spanish, Castilian and subtitled, via embed69 (vidhide). Latino first: one language per search.",
+      "version": "1.1.0",
       "author": "chester",
       "supportedTypes": ["movie", "tv"],
       "filename": "providers/sololatino.js",
       "enabled": true,
       "formats": ["m3u8"],
       "logo": "https://www.google.com/s2/favicons?domain=sololatino.net&sz=128",
+      "contentLanguage": ["es"],
+      "hasSettings": true
+    },
+    {
+      "id": "hackstore",
+      "name": "HackStore",
+      "description": "Movies and series in Latin Spanish via hackstore2.com (vimeos, streamwish).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": ["movie", "tv"],
+      "filename": "providers/hackstore.js",
+      "enabled": true,
+      "formats": ["m3u8"],
+      "logo": "https://www.google.com/s2/favicons?domain=hackstore2.com&sz=128",
+      "contentLanguage": ["es"],
+      "hasSettings": true
+    },
+    {
+      "id": "cinecalidad",
+      "name": "CineCalidad",
+      "description": "Movies in Latin Spanish via cinecalidad.vg (vimeos, streamwish).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": ["movie"],
+      "filename": "providers/cinecalidad.js",
+      "enabled": true,
+      "formats": ["m3u8"],
+      "logo": "https://www.google.com/s2/favicons?domain=cinecalidad.vg&sz=128",
       "contentLanguage": ["es"],
       "hasSettings": true
     }
