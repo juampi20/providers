@@ -150,7 +150,9 @@ export function bestTitleMatch(titles, year, candidates, options = {}) {
  */
 export async function titlesFor(tmdbId, mediaType) {
     const key = tmdbApiKey();
-    if (!key) throw new Error('No TMDB API key: this provider is searched by title, so it cannot resolve without one');
+    // Sin key (o si TMDB falla) los títulos salen de Wikidata, que no pide nada: sin esto cada provider que
+    // busca por título exigiría una key propia, porque Nuvio no comparte la suya con los plugins.
+    if (!key) return titlesFromWikidata(tmdbId, mediaType);
 
     const kind = mediaType === 'movie' ? 'movie' : 'tv';
     const root = '/' + kind + '/' + tmdbId;
@@ -175,8 +177,39 @@ export async function titlesFor(tmdbId, mediaType) {
     });
     ((results[2] && results[2].titles) || []).forEach((entry) => add(entry && entry.title));
 
-    if (!titles.length) throw new Error('TMDB has no title for ' + kind + ' ' + tmdbId);
+    if (!titles.length) return titlesFromWikidata(tmdbId, mediaType);
     return { titles, year };
+}
+
+// P4947 / P4983 son los ids de TMDB en Wikidata; las etiquetas es/en alcanzan para buscar en los sitios.
+const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)';
+
+/**
+ * Títulos desde Wikidata por id de TMDB, sin key. Es el camino que hace que un provider que busca por
+ * título funcione sin que el usuario pegue nada.
+ * @param {string} tmdbId
+ * @param {string} mediaType
+ */
+export async function titlesFromWikidata(tmdbId, mediaType) {
+    const prop = mediaType === 'movie' ? 'P4947' : 'P4983';
+    const numeric = String(tmdbId).replace(/\D/g, '');
+    const query = 'SELECT ?label ?lang WHERE { ?item wdt:' + prop + ' "' + numeric + '"; rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("es","en")) } LIMIT 12';
+    const response = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(query), {
+        headers: { 'User-Agent': WIKIDATA_UA }
+    });
+    if (!response.ok) throw new Error('Wikidata HTTP ' + response.status + ' for TMDB ' + tmdbId);
+    const data = await response.json();
+    const titles = [];
+    const addTitle = (label) => {
+        if (!label || titles.indexOf(label) >= 0) return;
+        titles.push(label);
+        // Los sitios buscan por el nombre pelado: "The Matrix" no encuentra "Matrix".
+        const bare = label.replace(/^(the|a|an|el|la|los|las|il|le)\s+/i, '').trim();
+        if (bare && bare !== label && titles.indexOf(bare) < 0) titles.push(bare);
+    };
+    ((data && data.results && data.results.bindings) || []).forEach((row) => addTitle(row.label && row.label.value));
+    if (!titles.length) throw new Error('No Wikidata title for TMDB ' + tmdbId);
+    return { titles, year: '' };
 }
 
 /**

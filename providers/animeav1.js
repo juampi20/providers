@@ -104,7 +104,7 @@ var CJK = /[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]/;
 function titlesFor(tmdbId, mediaType) {
   return __async(this, null, function* () {
     const key = tmdbApiKey();
-    if (!key) throw new Error("No TMDB API key: this provider is searched by title, so it cannot resolve without one");
+    if (!key) return titlesFromWikidata(tmdbId, mediaType);
     const kind = mediaType === "movie" ? "movie" : "tv";
     const root = "/" + kind + "/" + tmdbId;
     const results = yield Promise.all([
@@ -125,8 +125,31 @@ function titlesFor(tmdbId, mediaType) {
       add(data.original_title || data.original_name);
     });
     (results[2] && results[2].titles || []).forEach((entry) => add(entry && entry.title));
-    if (!titles.length) throw new Error("TMDB has no title for " + kind + " " + tmdbId);
+    if (!titles.length) return titlesFromWikidata(tmdbId, mediaType);
     return { titles, year };
+  });
+}
+var WIKIDATA_UA = "nuvio-providers/1.0 (https://github.com/juampi20/providers)";
+function titlesFromWikidata(tmdbId, mediaType) {
+  return __async(this, null, function* () {
+    const prop = mediaType === "movie" ? "P4947" : "P4983";
+    const numeric = String(tmdbId).replace(/\D/g, "");
+    const query = "SELECT ?label ?lang WHERE { ?item wdt:" + prop + ' "' + numeric + '"; rdfs:label ?label . BIND(lang(?label) AS ?lang) FILTER(?lang IN ("es","en")) } LIMIT 12';
+    const response = yield fetch("https://query.wikidata.org/sparql?format=json&query=" + encodeURIComponent(query), {
+      headers: { "User-Agent": WIKIDATA_UA }
+    });
+    if (!response.ok) throw new Error("Wikidata HTTP " + response.status + " for TMDB " + tmdbId);
+    const data = yield response.json();
+    const titles = [];
+    const addTitle = (label) => {
+      if (!label || titles.indexOf(label) >= 0) return;
+      titles.push(label);
+      const bare = label.replace(/^(the|a|an|el|la|los|las|il|le)\s+/i, "").trim();
+      if (bare && bare !== label && titles.indexOf(bare) < 0) titles.push(bare);
+    };
+    (data && data.results && data.results.bindings || []).forEach((row) => addTitle(row.label && row.label.value));
+    if (!titles.length) throw new Error("No Wikidata title for TMDB " + tmdbId);
+    return { titles, year: "" };
   });
 }
 
