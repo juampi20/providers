@@ -57,7 +57,7 @@ test('getImdbId uses TMDB with the injected TMDB_API_KEY', () => {
 
 test('parseVideoPage reads the plain /video/ server list with its language', () => {
     const embeds = _test.parseVideoPage(fixture('embed69-video.html'));
-    assert.deepStrictEqual(embeds.map((e) => e.server), ['streamwish.to', 'vidhide', 'waaw.to', 'voe.sx']);
+    assert.deepStrictEqual(embeds.map((e) => e.server), ['streamwish', 'vidhide', 'waaw.to', 'voe.sx']);
     assert.deepStrictEqual(embeds[1], { language: 'LAT', server: 'vidhide', url: 'https://vidhidepro.com/v/vezyplqzsoso' });
 });
 
@@ -178,4 +178,11 @@ test('pickPlayable gives up at the deadline when every CDN hangs', () => {
     global.fetch = () => new Promise(() => {});
     return _test.pickPlayable({ hls2: 'https://hung.example/a.m3u8', hls3: 'https://hung.example/b.m3u8' }, 'https://e.example/x', {}, 10, 30)
         .then((result) => { global.fetch = original; assert.strictEqual(result, null); }, (e) => { global.fetch = original; throw e; });
+});
+
+test('playableEmbed sends streamwish mirrors to vibuxer.com and keeps vidhide as is', () => {
+    assert.strictEqual(_test.playableEmbed({ server: 'streamwish', url: 'https://hglink.to/e/o0tzovv5f3t2' }), 'https://vibuxer.com/e/o0tzovv5f3t2');
+    assert.strictEqual(_test.playableEmbed({ server: 'streamwish', url: 'https://streamwish.to/e/jz6bxz6ryzvo' }), 'https://vibuxer.com/e/jz6bxz6ryzvo');
+    assert.strictEqual(_test.playableEmbed({ server: 'vidhide', url: 'https://vidhidepro.com/v/vezyplqzsoso' }), 'https://vidhidepro.com/v/vezyplqzsoso');
+    assert.strictEqual(_test.playableEmbed({ server: 'voe', url: 'https://voe.sx/e/hqou76go1rwg' }), null);
 });

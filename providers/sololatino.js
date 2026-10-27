@@ -1,5 +1,5 @@
 // Goes straight to embed69.org, the player sololatino.net embeds, since the site's search sits behind Cloudflare.
-// Only vidhide is resolved: voe needs a captcha and streamwish an obfuscated loader.
+// Resolves vidhide and streamwish, which share the packed `var links` player.
 
 const CryptoJS = require('crypto-js');
 
@@ -10,7 +10,8 @@ const EMBED_BASE = 'https://embed69.org/video/';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 // Wikimedia answers 403 to browser-like User-Agents from non-browsers; it wants one naming the client.
 const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)';
-const LANGUAGES ={ LAT: 'Latino', ESP: 'Castellano', SUB: 'Subtitulado' };
+const LANGUAGES = { LAT: 'Latino', ESP: 'Castellano', SUB: 'Subtitulado' };
+const SERVERS = { vidhide: 'Vidhide', streamwish: 'Streamwish' };
 
 function fetchText(url, referer) {
     const headers = { 'User-Agent': UA };
@@ -127,7 +128,8 @@ function parseVideoPage(html) {
     const result = [];
     html.replace(/playServerVast\('([^']+)'\);" data-lang="(\d+)"/g, function (m, url, index) {
         const host = url.split('/')[2] || '';
-        result.push({ language: languages[index] || 'LAT', server: host.indexOf('vidhide') >= 0 ? 'vidhide' : host, url: url });
+        const server = host.indexOf('vidhide') >= 0 ? 'vidhide' : /streamwish|hglink/.test(host) ? 'streamwish' : host;
+        result.push({ language: languages[index] || 'LAT', server: server, url: url });
     });
     return result;
 }
@@ -153,7 +155,14 @@ function unpack(html) {
     });
 }
 
-function extractVidhide(embedUrl) {
+// streamwish mirrors serve an obfuscated loader; vibuxer.com serves the same file as a packed player.
+function playableEmbed(embed) {
+    if (embed.server === 'vidhide') return embed.url;
+    if (embed.server === 'streamwish') return 'https://vibuxer.com/e/' + embed.url.split('/').pop();
+    return null;
+}
+
+function extractHls(embedUrl) {
     return fetchText(embedUrl, 'https://embed69.org/').then(function (html) {
         const script = unpack(html);
         const links = script && between(script, 'var links=', ';');
@@ -203,11 +212,8 @@ function probeHls(master, headers) {
     }).catch(function () { return null; });
 }
 
-// hls2/hls3 sit on flaky CDNs (seen hanging 60 s, past Nuvio's plugin timeout) and hls4 on the embed host but
-// behind PNG-wrapped segments, which some players reject. So probe them all at once, take the first clean
-// one, settle for a wrapped one after waitMs (2.5 s, like other Nuvio providers) and give up at deadlineMs
-// (5 s). Runtimes without setTimeout (desktop 1.1.21) can't wait, so there the first wrapped link wins and
-// a full hang can't be cut short.
+// hls2/hls3 CDNs often fail or hang past Nuvio's 60 s timeout; hls4 works but its PNG-wrapped segments may not play.
+// Without setTimeout (desktop 1.1.21) there is no waiting, so the first wrapped link wins and a full hang can't be cut.
 function pickPlayable(links, embedUrl, headers, waitMs, deadlineMs) {
     const candidates = ['hls2', 'hls3', 'hls4']
         .filter(function (k) { return links[k]; })
@@ -246,16 +252,17 @@ function getStreams(tmdbId, mediaType, season, episode) {
             return fetchText(EMBED_BASE + embedId(imdbId, mediaType, season, episode), 'https://sololatino.net/');
         })
         .then(function (html) {
-            const embeds = parsePage(html).filter(function (e) { return e.server === 'vidhide'; });
+            const embeds = parsePage(html).filter(function (e) { return playableEmbed(e); });
             return Promise.all(embeds.map(function (e) {
-                return extractVidhide(e.url).then(function (url) {
+                const embedUrl = playableEmbed(e);
+                return extractHls(embedUrl).then(function (url) {
                     if (!url) return null;
                     return {
                         name: 'SoloLatino',
-                        title: (LANGUAGES[e.language] || e.language) + ' - Vidhide',
+                        title: (LANGUAGES[e.language] || e.language) + ' - ' + SERVERS[e.server],
                         url: url,
                         quality: 'Auto',
-                        headers: { 'User-Agent': UA, Referer: e.url }
+                        headers: { 'User-Agent': UA, Referer: embedUrl }
                     };
                 }).catch(function () { return null; });
             }));
@@ -267,4 +274,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
         });
 }
 
-module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, segmentKind: segmentKind, pickPlayable: pickPlayable, embedId: embedId, extractVidhide: extractVidhide } };
+module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, segmentKind: segmentKind, pickPlayable: pickPlayable, embedId: embedId, playableEmbed: playableEmbed, extractHls: extractHls } };

@@ -5,7 +5,7 @@ const id = process.argv[2] || 'tt0903747-1x01';
 fetch('https://embed69.org/video/' + id, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://sololatino.net/' } })
     .then((res) => res.text())
     .then((html) => {
-        const vidhide = _test.parsePage(html).filter((e) => e.server === 'vidhide');
-        console.log(id, '-> vidhide embeds:', vidhide.length);
-        return Promise.all(vidhide.map((e) => _test.extractVidhide(e.url).then((url) => console.log(e.language, url))));
+        const embeds = _test.parsePage(html).filter((e) => _test.playableEmbed(e));
+        console.log(id, '-> playable embeds:', embeds.length);
+        return Promise.all(embeds.map((e) => _test.extractHls(_test.playableEmbed(e)).then((url) => console.log(e.language, e.server, url))));
     });
