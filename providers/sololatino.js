@@ -167,7 +167,7 @@ function extractHls(embedUrl) {
         const script = unpack(html);
         const links = script && between(script, 'var links=', ';');
         if (!links) return [];
-        return playableLinks(JSON.parse(links), embedUrl, { 'User-Agent': UA, Referer: embedUrl });
+        return playableLinks(JSON.parse(links), embedUrl);
     });
 }
 
@@ -177,72 +177,12 @@ function resolveUrl(ref, base) {
     return base.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + ref;
 }
 
-// URI of the highest-bandwidth entry (what the player picks), or null when it is not a playlist (CDN error pages are HTML).
-function bestUri(text) {
-    if (!text || String(text).trim().indexOf('#EXTM3U') !== 0) return null;
-    const lines = String(text).split('\n').map(function (l) { return l.trim(); });
-    let best = null;
-    let bestBandwidth = -1;
-    lines.forEach(function (line, i) {
-        if (!line || line.charAt(0) === '#') return;
-        const info = /BANDWIDTH=(\d+)/.exec(lines[i - 1] || '');
-        const bandwidth = info ? parseInt(info[1], 10) : 0;
-        if (bandwidth > bestBandwidth) { best = line; bestBandwidth = bandwidth; }
-    });
-    return best;
-}
-
-// 'ts' for clean MPEG-TS, 'wrapped' for TS behind a fake header (the tiktokcdn copies prepend a PNG), else null.
-function segmentKind(b) {
-    if (b.length > 188 && b[0] === 0x47 && b[188] === 0x47) return 'ts';
-    for (let i = 1; i + 376 < b.length && i < 400; i++) {
-        if (b[i] === 0x47 && b[i + 188] === 0x47 && b[i + 376] === 0x47) return 'wrapped';
-    }
-    return null;
-}
-
-// Walks master -> best variant -> first 1 KB of its first segment, since a CDN can serve the playlists and fail the segments.
-function probeHls(master, headers) {
-    const get = function (url) {
-        return fetch(url, { headers: headers }).then(function (res) { return res.ok ? res.text() : null; });
-    };
-    return get(master).then(function (text) {
-        const variantRef = bestUri(text);
-        if (!variantRef) return null;
-        const variant = resolveUrl(variantRef, master);
-        return get(variant).then(function (text2) {
-            const segmentRef = bestUri(text2);
-            if (!segmentRef) return null;
-            return fetch(resolveUrl(segmentRef, variant), { headers: Object.assign({ Range: 'bytes=0-1023' }, headers) })
-                .then(function (res) { return res.ok ? res.arrayBuffer() : null; })
-                .then(function (buf) { return buf ? segmentKind(new Uint8Array(buf)) : null; });
-        });
-    }).catch(function () { return null; });
-}
-
-// hls4's PNG-wrapped segments never play in Nuvio's libmpv, and hls2/hls3 CDNs fail or hang, so probe hls2/hls3
-// in parallel and keep the clean ones. Without setTimeout (desktop 1.1.21) a dead CDN takes 30 s+ to fail, so skip probing.
-function playableLinks(links, embedUrl, headers, deadlineMs) {
-    const candidates = ['hls2', 'hls3']
+// hls4 segments carry a PNG header that Nuvio's libmpv refuses. hls2/hls3 are not probed: Nuvio waits for every
+// pending request before returning results, and a dead CDN outlasts its 60 s plugin limit.
+function playableLinks(links, embedUrl) {
+    return ['hls2', 'hls3']
         .filter(function (k) { return links[k]; })
         .map(function (k) { return resolveUrl(links[k], embedUrl); });
-    if (typeof setTimeout !== 'function') return Promise.resolve(candidates);
-    return new Promise(function (resolve) {
-        const passed = [];
-        let pending = candidates.length;
-        let done = false;
-        function finish() {
-            if (!done) { done = true; resolve(passed.slice()); }
-        }
-        if (!pending) return finish();
-        setTimeout(finish, deadlineMs === undefined ? 5000 : deadlineMs);
-        candidates.forEach(function (url) {
-            probeHls(url, headers).then(function (kind) {
-                if (kind === 'ts') passed.push(url);
-                if (--pending === 0) finish();
-            });
-        });
-    });
 }
 
 function getStreams(tmdbId, mediaType, season, episode) {
@@ -275,4 +215,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
         });
 }
 
-module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, segmentKind: segmentKind, playableLinks: playableLinks, embedId: embedId, playableEmbed: playableEmbed, extractHls: extractHls } };
+module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, playableLinks: playableLinks, embedId: embedId, playableEmbed: playableEmbed, extractHls: extractHls } };
