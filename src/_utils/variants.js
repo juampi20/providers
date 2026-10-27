@@ -10,7 +10,7 @@
 import { fetchBrowserText } from './http.js';
 import { resolveUrl } from './packed.js';
 import { inferQuality } from './quality.js';
-import { mp4Resolution, heightLabel } from './mp4.js';
+import { mp4Resolution, mp4Size, sizeLabel, heightLabel } from './mp4.js';
 
 /** Alto de la variante al nombre que se muestra. */
 const labelForHeight = heightLabel;
@@ -69,12 +69,14 @@ export async function withRealQuality(found) {
     return Promise.all(found.map(async (stream) => {
         if (isDirectFile(stream.url)) {
             const size = await mp4Resolution(stream.url, stream.headers).catch(() => null);
-            const quality = size ? labelForHeight(size.height) : inferQuality(stream.url);
+            // Sin `Range` (el runtime del cliente puede ignorarlo) no hay resolución: se mide el tamaño.
+            const bytes = size ? 0 : await mp4Size(stream.url, stream.headers).catch(() => 0);
             return {
                 url: stream.url,
                 headers: stream.headers,
-                quality,
+                quality: size ? labelForHeight(size.height) : 'Direct',
                 resolution: size ? size.width + 'x' + size.height : '',
+                size: sizeLabel(bytes || (size ? 0 : 0)),
                 protocol: 'mp4',
                 kind: 'direct',
                 best: !!size && size.height >= 720
@@ -84,8 +86,10 @@ export async function withRealQuality(found) {
         return {
             url: resolved.url,
             headers: stream.headers,
-            quality: resolved.quality,
+            // Sin resolución legible, el primer token es la clase: Web.
+            quality: resolved.height ? resolved.quality : 'Web',
             resolution: resolved.height ? 'x' + resolved.height : '',
+            size: '',
             protocol: 'hls',
             kind: 'web',
             best: !!resolved.height && resolved.height >= 1080

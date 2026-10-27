@@ -68,3 +68,27 @@ export async function mp4Resolution(url, headers) {
     }
     return null;
 }
+
+/**
+ * Tamaño del archivo por HEAD, para cuando el runtime no acepta `Range` y la resolución no se puede leer.
+ * No es una resolución, pero es un dato real y comparable.
+ * @param {string} url
+ * @param {object} [headers]
+ */
+export async function mp4Size(url, headers) {
+    try {
+        const response = await fetch(url, { method: 'HEAD', headers: Object.assign({ 'User-Agent': UA }, headers || {}) });
+        if (!response.ok) return 0;
+        const length = parseInt(response.headers.get('content-length') || '0', 10);
+        return length > 0 ? length : 0;
+    } catch (e) {
+        return 0;
+    }
+}
+
+/** @param {number} bytes */
+export function sizeLabel(bytes) {
+    if (!bytes) return '';
+    const mb = Math.round(bytes / 1048576);
+    return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb + ' MB';
+}

@@ -48,9 +48,20 @@ draws `name` on the first line and `quality` on the second, so the formatter's `
 `languageTag` is the language unless it is Latino, the normal case in this catalogue and therefore noise. The
 star only appears on a stream whose quality was measured well (`variants.js` `best`).
 
-`Web` tags a stream that is an HLS rendition or an embed-derived URL, as opposed to a direct `.mp4` file. Direct
-files come first inside a language group, because they are the source itself and render better than a CDN
-rendition: a row without `Web` is the one to pick.
+The second line starts with a **sort token**, because Nuvio orders the list by comparing the text it gets in
+the `quality` field:
+
+| Lo que hay | Segunda línea |
+|---|---|
+| archivo directo medido | `1080p · MP4Upload` |
+| archivo directo sin medir | `Direct · 187 MB · YourUpload` |
+| HLS medido | `720p · VOE · Web` |
+| HLS sin medir | `Web · HLS` |
+
+Alphabetically `1080p` < `720p` < `Direct` < `Web`, so the measured streams land on top, then the direct files
+that could not be measured, then the HLS renditions. `Direct` and `Web` are classes, not resolutions: when the
+runtime ignores a ranged request the mp4's height cannot be read, and its size — one HEAD — is the only real
+number left.
 
 ## Trade-off worth knowing
 

@@ -374,6 +374,23 @@ function mp4Resolution(url, headers) {
     return null;
   });
 }
+function mp4Size(url, headers) {
+  return __async(this, null, function* () {
+    try {
+      const response = yield fetch(url, { method: "HEAD", headers: Object.assign({ "User-Agent": UA }, headers || {}) });
+      if (!response.ok) return 0;
+      const length = parseInt(response.headers.get("content-length") || "0", 10);
+      return length > 0 ? length : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+}
+function sizeLabel(bytes) {
+  if (!bytes) return "";
+  const mb = Math.round(bytes / 1048576);
+  return mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb + " MB";
+}
 
 // src/_utils/variants.js
 var labelForHeight = heightLabel;
@@ -413,12 +430,13 @@ function withRealQuality(found) {
     return Promise.all(found.map((stream) => __async(null, null, function* () {
       if (isDirectFile(stream.url)) {
         const size = yield mp4Resolution(stream.url, stream.headers).catch(() => null);
-        const quality = size ? labelForHeight(size.height) : inferQuality(stream.url);
+        const bytes = size ? 0 : yield mp4Size(stream.url, stream.headers).catch(() => 0);
         return {
           url: stream.url,
           headers: stream.headers,
-          quality,
+          quality: size ? labelForHeight(size.height) : "Direct",
           resolution: size ? size.width + "x" + size.height : "",
+          size: sizeLabel(bytes || (size ? 0 : 0)),
           protocol: "mp4",
           kind: "direct",
           best: !!size && size.height >= 720
@@ -428,8 +446,10 @@ function withRealQuality(found) {
       return {
         url: resolved.url,
         headers: stream.headers,
-        quality: resolved.quality,
+        // Sin resolución legible, el primer token es la clase: Web.
+        quality: resolved.height ? resolved.quality : "Web",
         resolution: resolved.height ? "x" + resolved.height : "",
+        size: "",
         protocol: "hls",
         kind: "web",
         best: !!resolved.height && resolved.height >= 1080
@@ -732,9 +752,9 @@ var FORMATTERS = {
    */
   standard: {
     name: ["+star", "provider", "seasonEpisode"],
-    line2: ["server", "web", "languageTag", "quality"],
+    line2: ["qualityTag", "size", "server", "web", "languageTag"],
     title: ["languageTag"],
-    description: [["title", "year"], ["seasonEpisode"], ["languageTag", "server", "web", "quality"]]
+    description: [["title", "year"], ["seasonEpisode"], ["qualityTag", "size", "languageTag", "server", "web"]]
   },
   /** Todo en el nombre y la calidad sola abajo. */
   compact: {
@@ -812,8 +832,11 @@ function labeled(provider, language, server, found, context) {
       star: stream.best ? "\u2B50 " : "",
       // El idioma solo se muestra cuando no es latino: en un catálogo latino es el caso normal.
       languageTag: language && language !== "Latino" ? language : "",
-      // `Web` marca lo que viene de un HLS/embed, que rinde menos que un archivo directo.
-      web: stream.kind === "web" || stream.protocol === "hls" ? "Web" : "",
+      // La calidad medida manda; si no se pudo medir, el primer token es la clase (`Direct` o `Web`).
+      qualityTag: stream.quality || "Auto",
+      size: stream.size || "",
+      // `Web` como etiqueta aparte solo si el primer token no lo dice ya.
+      web: stream.kind === "web" && stream.quality && stream.quality !== "Web" ? "Web" : "",
       index: i + 1,
       title: context && context.title || "",
       year: context && context.year || "",

@@ -49,8 +49,11 @@ export function labeled(provider, language, server, found, context) {
             star: stream.best ? '⭐ ' : '',
             // El idioma solo se muestra cuando no es latino: en un catálogo latino es el caso normal.
             languageTag: language && language !== 'Latino' ? language : '',
-            // `Web` marca lo que viene de un HLS/embed, que rinde menos que un archivo directo.
-            web: stream.kind === 'web' || stream.protocol === 'hls' ? 'Web' : '',
+            // La calidad medida manda; si no se pudo medir, el primer token es la clase (`Direct` o `Web`).
+            qualityTag: stream.quality || 'Auto',
+            size: stream.size || '',
+            // `Web` como etiqueta aparte solo si el primer token no lo dice ya.
+            web: stream.kind === 'web' && stream.quality && stream.quality !== 'Web' ? 'Web' : '',
             index: i + 1,
             title: (context && context.title) || '',
             year: (context && context.year) || '',
