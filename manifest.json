@@ -75,6 +75,30 @@
       "supportsExternalPlayer": true
     },
     {
+      "id": "cinemitas",
+      "name": "Cinemitas",
+      "description": "Movies and series in Latin Spanish via cinemitas.org (vimeos, uqload, vimeus).",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/cinemitas.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=cinemitas.org&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
       "id": "doramasflix",
       "name": "DoramasFlix",
       "description": "Doramas y series asiáticas en Latino/Castellano/Subtitulado vía doramasflix.in (GraphQL).",

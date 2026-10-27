@@ -369,6 +369,25 @@ function decodeBase64(text) {
   }
   return out;
 }
+function resolveVimeusEmbed(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://vimeus.com/");
+    const m = /<script[^>]*type=["']text\/json["'][^>]*id=["']data["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+    if (!m) return [];
+    let payload;
+    try {
+      payload = JSON.parse(m[1]);
+    } catch (e) {
+      return [];
+    }
+    const inner = (payload.embeds || []).map((embed) => String(embed && embed.url || "")).filter((url) => /^https?:\/\//.test(url) && hostOf(url).indexOf("vimeus") < 0);
+    for (const url of inner) {
+      const resolver = resolverFor(url);
+      if (resolver) return resolver.resolve(url);
+    }
+    return [];
+  });
+}
 function unwrapEmbedShortener(url) {
   if (!/embedshortener\.|fkplayer\./i.test(String(url || ""))) return null;
   const token = String(url).split("/e/").pop().split(/[?#]/)[0];
@@ -389,7 +408,7 @@ function unwrapEmbedShortener(url) {
   return null;
 }
 var VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
-var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|byse/;
+var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|bysedika|bysevipa/;
 function resolverFor(embedUrl) {
   const host = hostOf(embedUrl);
   const shortener = unwrapEmbedShortener(embedUrl);
@@ -401,6 +420,7 @@ function resolverFor(embedUrl) {
   if (host.indexOf("goodstream") >= 0) return { key: "goodstream", server: "GoodStream", resolve: resolveGoodstream, dynamic: true };
   if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
   if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
+  if (host.indexOf("vimeus") >= 0) return { key: "vimeus", server: "Vimeus", resolve: resolveVimeusEmbed, dynamic: true };
   if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: "okru", server: "OK.ru", resolve: resolveOkru, dynamic: true };
   if (/doodstream|dood\.|ds2play|do7go/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
   return null;

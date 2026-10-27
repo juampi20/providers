@@ -237,6 +237,32 @@ export function decodeBase64(text) {
     return out;
 }
 
+
+/**
+ * vimeus.com: no es un player sino un índice. Su página trae
+ * `<script type="text/json" id="data">` con los embeds reales (vimeos, voe, …), así que se lee ese bloque y
+ * se resuelve el primero que tenga resolver propio.
+ */
+export async function resolveVimeusEmbed(embedUrl) {
+    const html = await fetchBrowserText(embedUrl, 'https://vimeus.com/');
+    const m = /<script[^>]*type=["']text\/json["'][^>]*id=["']data["'][^>]*>([\s\S]*?)<\/script>/i.exec(html);
+    if (!m) return [];
+    let payload;
+    try {
+        payload = JSON.parse(m[1]);
+    } catch (e) {
+        return [];
+    }
+    const inner = (payload.embeds || [])
+        .map((embed) => String((embed && embed.url) || ''))
+        .filter((url) => /^https?:\/\//.test(url) && hostOf(url).indexOf('vimeus') < 0);
+    for (const url of inner) {
+        const resolver = resolverFor(url);
+        if (resolver) return resolver.resolve(url);
+    }
+    return [];
+}
+
 /**
  * Varios catálogos entregan `embedshortener.co/e/<jwt>` en vez del embed real: el payload lleva el host
  * verdadero, así que desenvolverlo convierte un host opaco en voe/vidhide/streamwish.
@@ -265,7 +291,7 @@ export function unwrapEmbedShortener(url) {
 // ── mapa de hosts ────────────────────────────────────────────────────────────────────────────────────────
 
 const VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
-const STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|byse/;
+const STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer|bysefu|bysedika|bysevipa/;
 
 export const RESOLVER_HOSTS = {
     vimeos: /vimeos/,
@@ -291,6 +317,7 @@ export function resolverFor(embedUrl) {
     if (host.indexOf('goodstream') >= 0) return { key: 'goodstream', server: 'GoodStream', resolve: resolveGoodstream, dynamic: true };
     if (host.indexOf('uqload') >= 0 || host.indexOf('oneupload') >= 0) return { key: 'uqload', server: 'Uqload', resolve: resolveUqload, dynamic: true };
     if (host.indexOf('audinifer') >= 0) return { key: 'audinifer', server: 'Audinifer', resolve: resolveAudinifer, dynamic: true };
+    if (host.indexOf('vimeus') >= 0) return { key: 'vimeus', server: 'Vimeus', resolve: resolveVimeusEmbed, dynamic: true };
     if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: 'okru', server: 'OK.ru', resolve: resolveOkru, dynamic: true };
     if (/doodstream|dood\.|ds2play|do7go/.test(host)) return { key: 'dood', server: 'Doodstream', resolve: resolveDood, dynamic: true };
     return null;
