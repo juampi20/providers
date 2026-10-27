@@ -75,3 +75,29 @@ test('parsePage handles both the encrypted /f/ and the plain /video/ layouts', (
     assert.strictEqual(_test.parsePage(fixture('embed69-video.html')).length, 4);
     assert.deepStrictEqual(_test.parseVideoPage(fixture('embed69-episode.html')), []);
 });
+
+test('onSettings exposes a password field for the TMDB key', () => {
+    assert.deepStrictEqual(_test.onSettings().map((f) => [f.type, f.key, f.isPassword]), [['text', 'tmdbApiKey', true]]);
+});
+
+test('getImdbId prefers the TMDB key saved in the plugin settings', () => {
+    global.TMDB_API_KEY = 'injected';
+    global.SCRAPER_SETTINGS = { tmdbApiKey: '  mine  ' };
+    return withFetch(() => ({ imdb_id: 'tt14488928' }), () => _test.getImdbId('201897', 'tv')).then(({ result, urls }) => {
+        delete global.TMDB_API_KEY;
+        delete global.SCRAPER_SETTINGS;
+        assert.strictEqual(result, 'tt14488928');
+        assert.deepStrictEqual(urls, ['https://api.themoviedb.org/3/tv/201897/external_ids?api_key=mine']);
+    });
+});
+
+test('getImdbId falls back to Wikidata when TMDB has no IMDb id (e.g. a bad key)', () => {
+    global.SCRAPER_SETTINGS = { tmdbApiKey: 'bad' };
+    const replies = [{ status_code: 7, status_message: 'Invalid API key' }, { results: { bindings: [{ imdb: { value: 'tt0133093' } }] } }];
+    return withFetch(() => replies.shift(), () => _test.getImdbId('603', 'movie')).then(({ result, urls }) => {
+        delete global.SCRAPER_SETTINGS;
+        assert.strictEqual(result, 'tt0133093');
+        assert.strictEqual(urls.length, 2);
+        assert.match(urls[1], /^https:\/\/query\.wikidata\.org\//);
+    });
+});

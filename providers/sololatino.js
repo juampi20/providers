@@ -3,7 +3,7 @@
 
 const CryptoJS = require('crypto-js');
 
-// TMDB_API_KEY is a global Nuvio injects (the user's key, else Nuvio's default); a local declaration would shadow it.
+// TMDB_API_KEY and SCRAPER_SETTINGS are globals Nuvio injects; local declarations would shadow them.
 
 // /video/ 302s to /f/ when the title is there, so it covers both layouts.
 const EMBED_BASE = 'https://embed69.org/video/';
@@ -21,13 +21,33 @@ function fetchText(url, referer) {
     });
 }
 
-// Older Nuvio builds (e.g. desktop 1.1.21) don't inject TMDB_API_KEY, so fall back to Wikidata, which needs no key.
+// Nuvio shows this in the plugin's settings and hands the saved values back as SCRAPER_SETTINGS.
+function onSettings() {
+    return [{
+        type: 'text',
+        key: 'tmdbApiKey',
+        label: 'TMDB API key',
+        description: 'Optional. Needed on Nuvio builds that do not share their TMDB key with plugins; without it, titles missing from Wikidata are not found.',
+        placeholder: 'TMDB v3 API key',
+        isPassword: true
+    }];
+}
+
+// The key saved in the plugin settings wins over the one Nuvio injects; older builds (e.g. desktop 1.1.21) inject none.
+function tmdbApiKey() {
+    const saved = typeof SCRAPER_SETTINGS !== 'undefined' && SCRAPER_SETTINGS && SCRAPER_SETTINGS.tmdbApiKey;
+    if (saved && String(saved).trim()) return String(saved).trim();
+    return typeof TMDB_API_KEY !== 'undefined' && TMDB_API_KEY ? TMDB_API_KEY : null;
+}
+
+// Without a key, or when TMDB has no answer (e.g. a bad key), fall back to Wikidata, which needs no key.
 function getImdbId(tmdbId, mediaType) {
-    if (typeof TMDB_API_KEY === 'undefined' || !TMDB_API_KEY) return getImdbIdFromWikidata(tmdbId, mediaType);
+    const key = tmdbApiKey();
+    if (!key) return getImdbIdFromWikidata(tmdbId, mediaType);
     const path = mediaType === 'movie' ? 'movie/' + tmdbId : 'tv/' + tmdbId + '/external_ids';
-    return fetch('https://api.themoviedb.org/3/' + path + '?api_key=' + TMDB_API_KEY)
+    return fetch('https://api.themoviedb.org/3/' + path + '?api_key=' + encodeURIComponent(key))
         .then(function (res) { return res.json(); })
-        .then(function (data) { return data.imdb_id || null; });
+        .then(function (data) { return (data && data.imdb_id) || getImdbIdFromWikidata(tmdbId, mediaType); });
 }
 
 // P4947 / P4983 are Wikidata's TMDB movie / TV ids, P345 the IMDb id.
@@ -173,4 +193,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
         });
 }
 
-module.exports = { getStreams: getStreams, _test: { getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
+module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
