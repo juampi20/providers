@@ -7,7 +7,8 @@
 
 import CryptoJS from 'crypto-js';
 import { fetchBrowserText, fetchBrowserJson, BROWSER_UA } from '../_utils/http.js';
-import { between, hostOf, vibuxerUrl, resolveVidhide, resolveStreamWish } from '../_utils/packed.js';
+import { between, hostOf, vibuxerUrl } from '../_utils/packed.js';
+import { resolveVidhide, resolveStreamWish } from '../_utils/resolvers.js';
 import { inferQuality } from '../_utils/quality.js';
 import { labeled, groupByLanguage, resolveFirstLanguage } from '../_utils/labels.js';
 import { tmdbApiKey } from '../_utils/tmdb.js';

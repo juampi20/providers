@@ -212,24 +212,37 @@ function vibuxerUrl(embedUrl) {
 function playableLinks(links, embedUrl) {
   return ["hls2", "hls3"].filter((k) => links[k]).map((k) => resolveUrl(links[k], embedUrl));
 }
-function packedLinks(embedUrl, referer) {
-  return __async(this, null, function* () {
-    const html = yield fetchBrowserText(embedUrl, referer);
-    const script = unpack(html);
-    const links = script && between(script, "var links=", ";");
-    if (!links) return [];
-    return playableLinks(JSON.parse(links), embedUrl).map((url) => ({
-      url,
-      headers: { "User-Agent": BROWSER_UA, Referer: referer }
-    }));
-  });
+
+// src/_utils/resolvers.js
+function unpack2(html) {
+  const unpacker = new JsUnpacker(html);
+  return unpacker.detect() ? unpacker.unpack() : null;
 }
 function resolveVidhide(embedUrl) {
-  return packedLinks(embedUrl, embedUrl);
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const script = unpack2(html);
+    if (script) {
+      const links = between(script, "var links=", ";");
+      if (links) {
+        const urls = playableLinks(JSON.parse(links), embedUrl);
+        if (urls.length) return urls.map((url) => ({ url, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }));
+      }
+      const direct = /"(hls2|hls3)"\s*:\s*"([^"]+)"/.exec(script);
+      if (direct) return [{ url: resolveUrl(direct[2], embedUrl), headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+    }
+    return [];
+  });
 }
 function resolveStreamWish(embedUrl) {
-  const target = vibuxerUrl(embedUrl);
-  return packedLinks(target, target);
+  return __async(this, null, function* () {
+    const target = vibuxerUrl(embedUrl);
+    const html = yield fetchBrowserText(target, target);
+    const script = unpack2(html);
+    const links = script && between(script, "var links=", ";");
+    if (!links) return [];
+    return playableLinks(JSON.parse(links), target).map((url) => ({ url, headers: { "User-Agent": BROWSER_UA, Referer: target } }));
+  });
 }
 
 // src/_utils/quality.js

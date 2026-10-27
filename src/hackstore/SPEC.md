@@ -48,7 +48,7 @@ Only hosts with a resolver become streams; everything else is dropped before any
 - **Streamwish** — mirrors are rewritten to `vibuxer.com/e/<id>`, the packed player is unpacked, and only
   `hls2`/`hls3` survive (`hls4` segments carry a PNG header libmpv refuses). Known to hand out dead CDN
   links; kept because it costs nothing and may recover.
-- **VOE is not resolved** (a recorded non-goal), and neither are hosts with no resolver (`doodstream`, …).
+- **Any host with a resolver in [utils](utils) becomes a stream** — vimeos, streamwish, vidhide, VOE, goodstream, uqload, ok.ru — so the provider gains servers without touching its own code. A host with no resolver is dropped before any request.
 
 `quality` is read from the tier list inside a multi-quality master URL (`_,n,h,.urlset`) — a pure function,
 so no link is ever probed. A URL with no tier and no `<n>p` in it reports `Auto`.

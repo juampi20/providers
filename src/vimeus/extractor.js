@@ -7,7 +7,8 @@
  */
 
 import { browserHeaders } from '../_utils/http.js';
-import { resolverFor, playableLinks, resolveVimeos, resolveStreamWish, unpack } from '../_utils/packed.js';
+import { resolverFor, resolveVimeos, resolveStreamWish } from '../_utils/resolvers.js';
+import { playableLinks, unpack } from '../_utils/packed.js';
 import { inferQuality } from '../_utils/quality.js';
 import { labeled } from '../_utils/labels.js';
 

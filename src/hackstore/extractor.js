@@ -6,7 +6,8 @@
  */
 
 import { fetchBrowserJson } from '../_utils/http.js';
-import { resolveVimeos, resolveStreamWish, playableLinks, vibuxerUrl } from '../_utils/packed.js';
+import { resolverFor, resolveVimeos, resolveStreamWish } from '../_utils/resolvers.js';
+import { playableLinks, vibuxerUrl } from '../_utils/packed.js';
 import { inferQuality } from '../_utils/quality.js';
 import { labeled, groupByLanguage, resolveFirstLanguage } from '../_utils/labels.js';
 import { titlesFor, bestTitleMatch, buildSlug, slugVariants, splitTitleYear } from '../_utils/matcher.js';
@@ -80,14 +81,6 @@ export async function fetchEmbeds(postId) {
     return ((body && body.data) || [])
         .filter((embed) => embed && typeof embed.url === 'string' && /^https?:\/\//.test(embed.url))
         .map((embed) => ({ url: embed.url, language: normalizeLanguage(embed.lang) }));
-}
-
-/** @param {string} embedUrl */
-export function resolverFor(embedUrl) {
-    const host = embedUrl.split('/')[2] || '';
-    if (host.indexOf('vimeos') >= 0) return { server: 'vimeos', resolve: resolveVimeos };
-    if (/streamwish|hlswish|hglink|strwish/.test(host)) return { server: 'streamwish', resolve: resolveStreamWish };
-    return null;
 }
 
 async function resolveEmbed(embed) {

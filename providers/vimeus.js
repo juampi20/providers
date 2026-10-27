@@ -175,29 +175,46 @@ function vibuxerUrl(embedUrl) {
 function playableLinks(links, embedUrl) {
   return ["hls2", "hls3"].filter((k) => links[k]).map((k) => resolveUrl(links[k], embedUrl));
 }
-function packedLinks(embedUrl, referer) {
-  return __async(this, null, function* () {
-    const html = yield fetchBrowserText(embedUrl, referer);
-    const script = unpack(html);
-    const links = script && between(script, "var links=", ";");
-    if (!links) return [];
-    return playableLinks(JSON.parse(links), embedUrl).map((url) => ({
-      url,
-      headers: { "User-Agent": BROWSER_UA, Referer: referer }
-    }));
-  });
+
+// src/_utils/resolvers.js
+function unpack2(html) {
+  const unpacker = new JsUnpacker(html);
+  return unpacker.detect() ? unpacker.unpack() : null;
+}
+function firstM3u8(text) {
+  const m = /["']?(https?:\/\/[^"'\s<>\\]+\.m3u8[^"'\s<>\\]*)["']?/i.exec(text || "");
+  return m ? m[1] : null;
 }
 function resolveVidhide(embedUrl) {
-  return packedLinks(embedUrl, embedUrl);
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const script = unpack2(html);
+    if (script) {
+      const links = between(script, "var links=", ";");
+      if (links) {
+        const urls = playableLinks(JSON.parse(links), embedUrl);
+        if (urls.length) return urls.map((url) => ({ url, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }));
+      }
+      const direct = /"(hls2|hls3)"\s*:\s*"([^"]+)"/.exec(script);
+      if (direct) return [{ url: resolveUrl(direct[2], embedUrl), headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+    }
+    return [];
+  });
 }
 function resolveStreamWish(embedUrl) {
-  const target = vibuxerUrl(embedUrl);
-  return packedLinks(target, target);
+  return __async(this, null, function* () {
+    const target = vibuxerUrl(embedUrl);
+    const html = yield fetchBrowserText(target, target);
+    const script = unpack2(html);
+    const links = script && between(script, "var links=", ";");
+    if (!links) return [];
+    return playableLinks(JSON.parse(links), target).map((url) => ({ url, headers: { "User-Agent": BROWSER_UA, Referer: target } }));
+  });
 }
 function resolveVimeos(embedUrl) {
   return __async(this, null, function* () {
     const html = yield fetchBrowserText(embedUrl, "https://vimeos.net/");
-    const script = unpack(html) || html;
+    const script = unpack2(html) || html;
     const m = /["']([^"']+\.m3u8[^"']*)['"]/i.exec(script);
     if (!m) return [];
     const master = resolveUrl(m[1], embedUrl);
@@ -226,16 +243,166 @@ function bestVariant(masterUrl, headers) {
     return variants[0].url;
   });
 }
-var RESOLVERS = {
-  vimeos: { key: "vimeos", server: "Vimeos", resolve: resolveVimeos },
-  streamwish: { key: "streamwish", server: "Streamwish", resolve: resolveStreamWish },
-  vidhide: { key: "vidhide", server: "Vidhide", resolve: resolveVidhide }
-};
+function resolveGoodstream(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://goodstream.one/");
+    const unpacked = unpack2(html) || html;
+    const file = /file\s*:\s*["'](https?:\/\/[^"']+\.m3u8[^"']*)["']/i.exec(unpacked);
+    const url = file ? file[1] : firstM3u8(unpacked);
+    if (!url) return [];
+    return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: "https://goodstream.one/" } }];
+  });
+}
+function resolveUqload(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, "https://uqload.com/");
+    const unpacked = unpack2(html) || html;
+    const url = firstM3u8(unpacked);
+    if (!url) return [];
+    return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: "https://uqload.com/" } }];
+  });
+}
+function resolveAudinifer(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const unpacked = unpack2(html) || html;
+    const file = /(?:file|src)\s*[:=]\s*["'](https?:\/\/[^"']+\.(?:m3u8|mp4)[^"']*)["']/i.exec(unpacked);
+    const url = file ? file[1] : firstM3u8(unpacked);
+    if (!url) return [];
+    return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+  });
+}
+function resolveVoe(embedUrl) {
+  return __async(this, null, function* () {
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const redirected = /window\.location\.href\s*=\s*["']([^"']+)["']/i.exec(html);
+    if (redirected && html.length < 4e3) return resolveVoe(redirected[1]);
+    const scriptJson = /<script type="application\/json">([\s\S]*?)<\/script>/.exec(html);
+    if (scriptJson) {
+      let encoded = null;
+      try {
+        encoded = JSON.parse(scriptJson[1].trim());
+        if (Array.isArray(encoded)) encoded = encoded[0];
+      } catch (e) {
+        encoded = null;
+      }
+      if (typeof encoded === "string") {
+        const url = decodeVoe(encoded);
+        if (url) return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+      }
+    }
+    const raw = firstM3u8(html);
+    if (!raw) return [];
+    return [{ url: raw, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }];
+  });
+}
+function decodeVoe(encoded) {
+  try {
+    let text = encoded.replace(/[a-zA-Z]/g, (c) => {
+      const code = c.charCodeAt(0);
+      const limit = c <= "Z" ? 90 : 122;
+      const shifted2 = code + 13;
+      return String.fromCharCode(limit >= shifted2 ? shifted2 : shifted2 - 26);
+    });
+    ["@$", "^^", "~@", "%?", "*~", "!!", "#&"].forEach((noise) => {
+      text = text.split(noise).join("");
+    });
+    const first = decodeBase64(text);
+    let shifted = "";
+    for (let i = 0; i < first.length; i++) shifted += String.fromCharCode(first.charCodeAt(i) - 3);
+    const payload = JSON.parse(decodeBase64(shifted.split("").reverse().join("")));
+    return payload && (payload.source || payload.direct_access_url) || null;
+  } catch (e) {
+    return null;
+  }
+}
+function resolveDood(embedUrl) {
+  return __async(this, null, function* () {
+    const host = (embedUrl.match(/^(https?:\/\/[^/]+)/) || [])[1] || "https://dood.to";
+    const html = yield fetchBrowserText(embedUrl, embedUrl);
+    const path = /\$\.get\(\s*["']\/pass_md5\/([^"']+)["']/.exec(html);
+    if (!path) {
+      const direct = firstM3u8(html);
+      return direct ? [{ url: direct, headers: { "User-Agent": BROWSER_UA, Referer: embedUrl } }] : [];
+    }
+    const token = (yield fetchBrowserText(host + "/pass_md5/" + path[1], embedUrl)).trim();
+    if (!token) return [];
+    const random = Math.random().toString(36).slice(2, 12);
+    return [{ url: token + random + "?token=" + path[1] + "&expiry=" + Date.now(), headers: { "User-Agent": BROWSER_UA, Referer: host + "/" } }];
+  });
+}
+function resolveOkru(embedUrl) {
+  return __async(this, null, function* () {
+    const id = /(?:ok\.ru|odnoklassniki\.ru)\/(?:videoembed|video|live)\/(\d+)/i.exec(embedUrl) || /[?&]mid=(\d+)/i.exec(embedUrl);
+    if (!id) return [];
+    const response = yield fetch("https://www.ok.ru/dk", {
+      method: "POST",
+      headers: {
+        "User-Agent": BROWSER_UA,
+        "Content-Type": "application/x-www-form-urlencoded",
+        Referer: "https://ok.ru/videoembed/" + id[1],
+        Origin: "https://ok.ru"
+      },
+      body: "cmd=videoPlayerMetadata&mid=" + id[1]
+    });
+    const data = yield response.json().catch(() => null);
+    if (!data || data.error) return [];
+    const url = data.hlsManifestUrl || data.hlsMasterPlaylistUrl || data.videos && data.videos[0] && data.videos[0].url;
+    if (!url) return [];
+    return [{ url, headers: { "User-Agent": BROWSER_UA, Referer: "https://ok.ru/" } }];
+  });
+}
+var BASE64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+function decodeBase64(text) {
+  let out = "";
+  let buffer = 0;
+  let bits = 0;
+  for (let i = 0; i < text.length; i++) {
+    const value = BASE64.indexOf(text.charAt(i));
+    if (value < 0) continue;
+    buffer = buffer << 6 | value;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out += String.fromCharCode(buffer >> bits & 255);
+    }
+  }
+  return out;
+}
+function unwrapEmbedShortener(url) {
+  if (!/embedshortener\.|fkplayer\./i.test(String(url || ""))) return null;
+  const token = String(url).split("/e/").pop().split(/[?#]/)[0];
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+  let payload = null;
+  try {
+    payload = JSON.parse(decodeBase64(parts[1]));
+  } catch (e) {
+    return null;
+  }
+  if (!payload) return null;
+  if (payload.embed && /^https?:/i.test(payload.embed)) return payload.embed;
+  if (payload.link) {
+    const decoded = decodeBase64(payload.link);
+    if (/^https?:/i.test(decoded)) return decoded;
+  }
+  return null;
+}
+var VIDHIDE_HOSTS = /vidhide|dintezuvio|minochinos|morencius|movearnpre|luluvdo|filelions/;
+var STREAMWISH_HOSTS = /streamwish|hlswish|hglink|hglamioz|strwish|wishfast|awish|flaswish|wishembed|dhcplay|vibuxer/;
 function resolverFor(embedUrl) {
   const host = hostOf(embedUrl);
-  if (host.indexOf("vimeos") >= 0) return RESOLVERS.vimeos;
-  if (/streamwish|hlswish|hglink|strwish/.test(host)) return RESOLVERS.streamwish;
-  if (/vidhide|dintezuvio|filelions/.test(host)) return RESOLVERS.vidhide;
+  const shortener = unwrapEmbedShortener(embedUrl);
+  if (shortener) return resolverFor(shortener);
+  if (host.indexOf("vimeos") >= 0) return { key: "vimeos", server: "Vimeos", resolve: resolveVimeos };
+  if (STREAMWISH_HOSTS.test(host)) return { key: "streamwish", server: "Streamwish", resolve: resolveStreamWish };
+  if (VIDHIDE_HOSTS.test(host)) return { key: "vidhide", server: "Vidhide", resolve: resolveVidhide };
+  if (host.indexOf("voe") >= 0) return { key: "voe", server: "VOE", resolve: resolveVoe, dynamic: true };
+  if (host.indexOf("goodstream") >= 0) return { key: "goodstream", server: "GoodStream", resolve: resolveGoodstream, dynamic: true };
+  if (host.indexOf("uqload") >= 0 || host.indexOf("oneupload") >= 0) return { key: "uqload", server: "Uqload", resolve: resolveUqload, dynamic: true };
+  if (host.indexOf("audinifer") >= 0) return { key: "audinifer", server: "Audinifer", resolve: resolveAudinifer, dynamic: true };
+  if (/ok\.ru|okcdn|odnoklassniki/.test(host)) return { key: "okru", server: "OK.ru", resolve: resolveOkru, dynamic: true };
+  if (/doodstream|dood\.|ds2play/.test(host)) return { key: "dood", server: "Doodstream", resolve: resolveDood, dynamic: true };
   return null;
 }
 
