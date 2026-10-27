@@ -75,7 +75,8 @@ export async function withRealQuality(found) {
                 headers: stream.headers,
                 quality,
                 resolution: size ? size.width + 'x' + size.height : '',
-                protocol: 'mp4'
+                protocol: 'mp4',
+                best: !!size && size.height >= 720
             };
         }
         const resolved = await bestPlayable(stream.url);
@@ -84,7 +85,8 @@ export async function withRealQuality(found) {
             headers: stream.headers,
             quality: resolved.quality,
             resolution: resolved.height ? 'x' + resolved.height : '',
-            protocol: 'hls'
+            protocol: 'hls',
+            best: !!resolved.height && resolved.height >= 1080
         };
     }));
 }

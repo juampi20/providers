@@ -38,6 +38,8 @@ export function labeled(provider, language, server, found, context) {
             quality: stream.quality || 'Auto',
             resolution: stream.resolution || '',
             protocol: stream.protocol || '',
+            // Prefijo visual para la mejor fuente medida de la lista.
+            star: stream.best ? '⭐ ' : '',
             index: i + 1,
             title: (context && context.title) || '',
             year: (context && context.year) || '',

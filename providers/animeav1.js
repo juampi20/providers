@@ -352,7 +352,8 @@ function withRealQuality(found) {
           headers: stream.headers,
           quality,
           resolution: size ? size.width + "x" + size.height : "",
-          protocol: "mp4"
+          protocol: "mp4",
+          best: !!size && size.height >= 720
         };
       }
       const resolved = yield bestPlayable(stream.url);
@@ -361,7 +362,8 @@ function withRealQuality(found) {
         headers: stream.headers,
         quality: resolved.quality,
         resolution: resolved.height ? "x" + resolved.height : "",
-        protocol: "hls"
+        protocol: "hls",
+        best: !!resolved.height && resolved.height >= 1080
       };
     })));
   });
@@ -657,7 +659,7 @@ var GROUP_SEPARATOR = " \xB7 ";
 var FORMATTERS = {
   /** `Provider • S1E1 • Idioma • Servidor`, con la obra y el episodio en la descripción. */
   standard: {
-    name: ["provider", "seasonEpisode", "language", "server"],
+    name: ["+star", "provider", "seasonEpisode", "language", "server"],
     title: ["language"],
     description: [["title", "year"], ["seasonEpisode"], ["language", "server", "quality"]]
   },
@@ -669,7 +671,7 @@ var FORMATTERS = {
   },
   /** Con la calidad también en el nombre, para clientes que no dibujan `quality`. */
   verbose: {
-    name: ["provider", "seasonEpisode", "language", "server", "quality"],
+    name: ["+star", "provider", "seasonEpisode", "language", "server", "quality"],
     title: ["language"],
     description: [["title", "year"], ["seasonEpisode"], ["language", "server", "resolution"]]
   }
@@ -685,7 +687,19 @@ function partValue(part, fields) {
   return value === void 0 || value === null ? "" : String(value);
 }
 function line(parts, fields) {
-  return (parts || []).map((part) => partValue(part, fields)).filter(Boolean).join(SEPARATOR);
+  const chunks = [];
+  let glued = "";
+  (parts || []).forEach((part) => {
+    if (typeof part === "string" && part.charAt(0) === "+") {
+      glued += partValue(part.slice(1), fields);
+      return;
+    }
+    const value = partValue(part, fields);
+    if (value) chunks.push(glued + value);
+    glued = "";
+  });
+  if (glued) chunks.push(glued.trim());
+  return chunks.join(SEPARATOR);
 }
 function formatStream(fields, name = DEFAULT_FORMATTER) {
   const formatter = FORMATTERS[name] || FORMATTERS[DEFAULT_FORMATTER];
@@ -713,6 +727,8 @@ function labeled(provider, language, server, found, context) {
       quality: stream.quality || "Auto",
       resolution: stream.resolution || "",
       protocol: stream.protocol || "",
+      // Prefijo visual para la mejor fuente medida de la lista.
+      star: stream.best ? "\u2B50 " : "",
       index: i + 1,
       title: context && context.title || "",
       year: context && context.year || "",

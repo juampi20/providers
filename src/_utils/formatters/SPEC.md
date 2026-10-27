@@ -46,6 +46,14 @@ are measured (HLS master `RESOLUTION`, or the mp4's `tkhd`), `protocol` says `hl
 `seasonEpisode`/`title`/`year` are supplied by the provider's entry point through `applyContext`, because the
 resolver is nested deep inside `extractStreams` and does not know what was asked for.
 
+## The star
+
+`⭐` prefixes the name of a stream that measured at the top of what this repo can prove: 1080p or better on
+an HLS variant, or a direct `.mp4` measured at 720p or better (a direct file is the source itself, not a
+rendition). It comes from `variants.js`'s `best` flag, so an unmeasured link never earns one — the star means
+"verified good", not "looks good". A part written `+star` glues to the following part instead of taking a
+separator of its own.
+
 ## Known rough edge
 
 When nothing measurable is available the field says `Auto`, so the second line reads `Auto`. It is honest —

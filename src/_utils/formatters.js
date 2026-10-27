@@ -27,7 +27,7 @@ export const GROUP_SEPARATOR = ' \u00b7 ';
 export const FORMATTERS = {
     /** `Provider • S1E1 • Idioma • Servidor`, con la obra y el episodio en la descripción. */
     standard: {
-        name: ['provider', 'seasonEpisode', 'language', 'server'],
+        name: ['+star', 'provider', 'seasonEpisode', 'language', 'server'],
         title: ['language'],
         description: [['title', 'year'], ['seasonEpisode'], ['language', 'server', 'quality']]
     },
@@ -39,7 +39,7 @@ export const FORMATTERS = {
     },
     /** Con la calidad también en el nombre, para clientes que no dibujan `quality`. */
     verbose: {
-        name: ['provider', 'seasonEpisode', 'language', 'server', 'quality'],
+        name: ['+star', 'provider', 'seasonEpisode', 'language', 'server', 'quality'],
         title: ['language'],
         description: [['title', 'year'], ['seasonEpisode'], ['language', 'server', 'resolution']]
     }
@@ -73,9 +73,24 @@ function partValue(part, fields) {
     return value === undefined || value === null ? '' : String(value);
 }
 
-/** Línea a partir de una lista de partes. */
+/**
+ * Línea a partir de una lista de partes. Una parte escrita `+campo` se pega al principio de la siguiente en
+ * vez de separarse — así entra un emoji sin dejar el separador en medio.
+ */
 function line(parts, fields) {
-    return (parts || []).map((part) => partValue(part, fields)).filter(Boolean).join(SEPARATOR);
+    const chunks = [];
+    let glued = '';
+    (parts || []).forEach((part) => {
+        if (typeof part === 'string' && part.charAt(0) === '+') {
+            glued += partValue(part.slice(1), fields);
+            return;
+        }
+        const value = partValue(part, fields);
+        if (value) chunks.push(glued + value);
+        glued = '';
+    });
+    if (glued) chunks.push(glued.trim());
+    return chunks.join(SEPARATOR);
 }
 
 /**
