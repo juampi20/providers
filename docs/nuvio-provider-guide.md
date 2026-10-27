@@ -3,9 +3,10 @@
 > (texto de la licencia en `docs/LICENSE-gpl-3.0.txt`). El cuerpo de abajo está sin editar.
 >
 > **Ojo con las diferencias con este repo**, para no "arreglar" nuestro build siguiendo la guía al pie de la
-> letra: el nuestro se llama `npm run build` / `npm run build:min` (`scripts/build.js`, esbuild igual que la
-> guía), las fuentes son `src/<provider>/index.js` + `src/<provider>/provider.json`, y la salida va a
-> `providers/` (no a `dist/`). La entrada del manifest se genera desde `provider.json`.
+> letra: el nuestro se llama `npm run build` / `npm run build:min` (un `build.js` en la raíz, esbuild igual
+> que la guía), las fuentes son `src/<provider>/{index.js, extractor.js, log.js, scraper.json}`, y la salida
+> va a `providers/` (no a `dist/`). La entrada del manifest se genera desde `scraper.json` sobre
+> `scraper-defaults.json`.
 >
 > La verdad de este repo son `README.md`, `architecture.md` y los SPEC del grafo; esto es la referencia
 > externa del contrato de Nuvio.
