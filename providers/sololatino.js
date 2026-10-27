@@ -205,8 +205,9 @@ function probeHls(master, headers) {
 
 // hls2/hls3 sit on flaky CDNs (seen hanging 60 s, past Nuvio's plugin timeout) and hls4 on the embed host but
 // behind PNG-wrapped segments, which some players reject. So probe them all at once, take the first clean
-// one, settle for a wrapped one after waitMs and give up at deadlineMs. Runtimes without setTimeout
-// (desktop 1.1.21) can't wait, so there the first wrapped link wins and a full hang can't be cut short.
+// one, settle for a wrapped one after waitMs (2.5 s, like other Nuvio providers) and give up at deadlineMs
+// (5 s). Runtimes without setTimeout (desktop 1.1.21) can't wait, so there the first wrapped link wins and
+// a full hang can't be cut short.
 function pickPlayable(links, embedUrl, headers, waitMs, deadlineMs) {
     const candidates = ['hls2', 'hls3', 'hls4']
         .filter(function (k) { return links[k]; })
@@ -221,8 +222,8 @@ function pickPlayable(links, embedUrl, headers, waitMs, deadlineMs) {
         }
         if (!pending) return finish(null);
         if (canWait) {
-            setTimeout(function () { if (wrapped) finish(wrapped); }, waitMs === undefined ? 8000 : waitMs);
-            setTimeout(function () { finish(wrapped); }, deadlineMs === undefined ? 15000 : deadlineMs);
+            setTimeout(function () { if (wrapped) finish(wrapped); }, waitMs === undefined ? 2500 : waitMs);
+            setTimeout(function () { finish(wrapped); }, deadlineMs === undefined ? 5000 : deadlineMs);
         }
         candidates.forEach(function (url) {
             probeHls(url, headers).then(function (kind) {
