@@ -451,20 +451,51 @@ function inferQuality(url, server) {
   return labelled ? labelled[1] + "p" : "Auto";
 }
 
+// src/_utils/formatters.js
+var SEPARATOR = " \u2022 ";
+function serverWithIndex(fields) {
+  if (!fields.server) return "";
+  return fields.index > 1 ? fields.server + " " + fields.index : fields.server;
+}
+var join = (parts) => parts.filter(Boolean).join(SEPARATOR);
+var FORMATTERS = {
+  /** `Provider • Idioma • Servidor`. Pensado para Nuvio: name + quality. */
+  standard: {
+    name: (fields) => join([fields.provider, fields.language, serverWithIndex(fields)]),
+    title: (fields) => fields.language,
+    quality: (fields) => fields.quality
+  },
+  /** `Provider • Idioma` con el servidor en el título, para clientes que sí muestran `title`. */
+  compact: {
+    name: (fields) => join([fields.provider, fields.language]),
+    title: (fields) => join([serverWithIndex(fields)]),
+    quality: (fields) => fields.quality
+  },
+  /** `Provider • Idioma • Servidor • CALIDAD`, para clientes que no dibujan la calidad. */
+  verbose: {
+    name: (fields) => join([fields.provider, fields.language, serverWithIndex(fields), fields.quality && fields.quality !== "Auto" ? String(fields.quality).toUpperCase() : ""]),
+    title: (fields) => fields.language,
+    quality: (fields) => fields.quality
+  }
+};
+var DEFAULT_FORMATTER = "standard";
+function formatStream(fields, name = DEFAULT_FORMATTER) {
+  const formatter = FORMATTERS[name] || FORMATTERS[DEFAULT_FORMATTER];
+  return {
+    name: formatter.name(fields),
+    title: formatter.title(fields),
+    quality: formatter.quality(fields)
+  };
+}
+
 // src/_utils/labels.js
-var LABEL_SEPARATOR = " \u2022 ";
 function labeled(provider, language, server, found) {
   return found.map((stream, i) => {
-    const parts = [provider];
-    if (stream.quality && stream.quality !== "Auto") parts.push(String(stream.quality).toUpperCase());
-    if (server) parts.push(server);
-    return {
-      name: parts.join(LABEL_SEPARATOR),
-      title: language + (i ? " " + (i + 1) : ""),
-      url: stream.url,
-      quality: stream.quality || "Auto",
-      headers: stream.headers
-    };
+    const quality = stream.quality || "Auto";
+    return Object.assign(
+      formatStream({ provider, language, server, quality, index: i + 1 }),
+      { url: stream.url, headers: stream.headers }
+    );
   });
 }
 function groupByLanguage(embeds, order) {

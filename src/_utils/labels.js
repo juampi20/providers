@@ -2,14 +2,12 @@
  * Stream shape and the language cut, so every provider reports to Nuvio the same way.
  */
 
-/** Separator latinuvio uses between the metadata fields of the name line. */
-export const LABEL_SEPARATOR = ' \u2022 ';
+import { formatStream } from './formatters.js';
 
 /**
- * Shape a stream the way Nuvio renders it: `name` carries what qualifies the source
- * (provider, quality, server) and `title` carries the language. Quality is dropped when unknown instead of
- * printing AUTO on every row, and the numeric suffix that separates two links from one server goes in the
- * title, the only slot left.
+ * Shape a stream the way the client draws it. The formatter decides where each field goes — see
+ * [formatters](formatters): `name` carries provider, language and server, `quality` travels in its own field
+ * because Nuvio draws it on the second line, and `title` mirrors the language for clients that read it.
  *
  * @param {string} provider
  * @param {string} language
@@ -18,16 +16,11 @@ export const LABEL_SEPARATOR = ' \u2022 ';
  */
 export function labeled(provider, language, server, found) {
     return found.map((stream, i) => {
-        const parts = [provider];
-        if (stream.quality && stream.quality !== 'Auto') parts.push(String(stream.quality).toUpperCase());
-        if (server) parts.push(server);
-        return {
-            name: parts.join(LABEL_SEPARATOR),
-            title: language + (i ? ' ' + (i + 1) : ''),
-            url: stream.url,
-            quality: stream.quality || 'Auto',
-            headers: stream.headers
-        };
+        const quality = stream.quality || 'Auto';
+        return Object.assign(
+            formatStream({ provider, language, server, quality, index: i + 1 }),
+            { url: stream.url, headers: stream.headers }
+        );
     });
 }
 
