@@ -6,7 +6,7 @@ Personal provider repository for Nuvio.
 
 | Provider | File | Source | Servers |
 |----------|------|--------|---------|
-| SoloLatino | `providers/sololatino.js` | embed69 player used by sololatino.net (Latino, Castellano, Subtitulado) | vidhide |
+| SoloLatino | `providers/sololatino.js` | embed69 player (`/f/` and `/video/`) used by sololatino.net (Latino, Castellano, Subtitulado) | vidhide |
 
 ## Setup
 
@@ -28,4 +28,4 @@ npm test                            # offline tests against saved fixtures
 npm run live -- tt0903747-1x01      # SoloLatino against the real sites
 ```
 
-SoloLatino notes: voe sits behind a captcha and streamwish behind an obfuscated loader, so only vidhide is supported.
+SoloLatino notes: it queries `embed69.org/video/<id>`, which redirects to the encrypted `/f/` page when the title is there and otherwise serves a plain server list (e.g. The 100). voe sits behind a captcha and streamwish behind an obfuscated loader, so only vidhide is supported.

@@ -54,3 +54,24 @@ test('getImdbId uses TMDB with the injected TMDB_API_KEY', () => {
         assert.deepStrictEqual(urls, ['https://api.themoviedb.org/3/movie/603?api_key=injected']);
     });
 });
+
+test('parseVideoPage reads the plain /video/ server list with its language', () => {
+    const embeds = _test.parseVideoPage(fixture('embed69-video.html'));
+    assert.deepStrictEqual(embeds.map((e) => e.server), ['streamwish.to', 'vidhide', 'waaw.to', 'voe.sx']);
+    assert.deepStrictEqual(embeds[1], { language: 'LAT', server: 'vidhide', url: 'https://vidhidepro.com/v/vezyplqzsoso' });
+});
+
+test('parseVideoPage maps each server to its own language tab', () => {
+    const html = '<li class="SLD_A" data-lang="0"><img src="https://embed69.org/static/lang/LAT.png"></li>' +
+        '<li class="SLD_B" data-lang="1"><img src="https://embed69.org/static/lang/SUB.png"></li>' +
+        '<li onclick="playServerVast(\'https://vidhidepro.com/v/aaa\');" data-lang="0">' +
+        '<li onclick="playServerVast(\'https://vidhidepro.com/v/bbb\');" data-lang="1">';
+    assert.deepStrictEqual(_test.parseVideoPage(html).map((e) => e.language + ' ' + e.url),
+        ['LAT https://vidhidepro.com/v/aaa', 'SUB https://vidhidepro.com/v/bbb']);
+});
+
+test('parsePage handles both the encrypted /f/ and the plain /video/ layouts', () => {
+    assert.deepStrictEqual(_test.parsePage(fixture('embed69-episode.html')).map((e) => e.server), ['vidhide', 'streamwish', 'voe']);
+    assert.strictEqual(_test.parsePage(fixture('embed69-video.html')).length, 4);
+    assert.deepStrictEqual(_test.parseVideoPage(fixture('embed69-episode.html')), []);
+});

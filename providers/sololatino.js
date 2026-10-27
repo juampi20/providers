@@ -5,7 +5,8 @@ const CryptoJS = require('crypto-js');
 
 // TMDB_API_KEY is a global Nuvio injects (the user's key, else Nuvio's default); a local declaration would shadow it.
 
-const EMBED_BASE = 'https://embed69.org/f/';
+// /video/ 302s to /f/ when the title is there, so it covers both layouts.
+const EMBED_BASE = 'https://embed69.org/video/';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 // Wikimedia answers 403 to browser-like User-Agents from non-browsers; it wants one naming the client.
 const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)';
@@ -96,6 +97,25 @@ function parseEmbedPage(html) {
     return result;
 }
 
+// Titles missing from /f/ (e.g. The 100) only exist on embed69's /video/ page, a plain list of
+// playServerVast('<url>') entries, each tagged with a data-lang index into the language tabs.
+function parseVideoPage(html) {
+    const languages = {};
+    html.replace(/<li class="SLD_[A-Z]" data-lang="(\d+)">\s*<img src="[^"]*\/lang\/([A-Z]+)\.png/g, function (m, index, lang) {
+        languages[index] = lang;
+    });
+    const result = [];
+    html.replace(/playServerVast\('([^']+)'\);" data-lang="(\d+)"/g, function (m, url, index) {
+        const host = url.split('/')[2] || '';
+        result.push({ language: languages[index] || 'LAT', server: host.indexOf('vidhide') >= 0 ? 'vidhide' : host, url: url });
+    });
+    return result;
+}
+
+function parsePage(html) {
+    return parseEmbedPage(html).concat(parseVideoPage(html));
+}
+
 // Dean Edwards' p,a,c,k,e,d packer.
 function unpack(html) {
     const m = html.match(/eval\(function\(p,a,c,k,e,d\)\{[\s\S]*?\}\('([\s\S]*?)',(\d+),(\d+),'([\s\S]*?)'\.split\('\|'\)/);
@@ -132,7 +152,7 @@ function getStreams(tmdbId, mediaType, season, episode) {
             return fetchText(EMBED_BASE + embedId(imdbId, mediaType, season, episode), 'https://sololatino.net/');
         })
         .then(function (html) {
-            const embeds = parseEmbedPage(html).filter(function (e) { return e.server === 'vidhide'; });
+            const embeds = parsePage(html).filter(function (e) { return e.server === 'vidhide'; });
             return Promise.all(embeds.map(function (e) {
                 return extractVidhide(e.url).then(function (url) {
                     if (!url) return null;
@@ -153,4 +173,4 @@ function getStreams(tmdbId, mediaType, season, episode) {
         });
 }
 
-module.exports = { getStreams: getStreams, _test: { getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
+module.exports = { getStreams: getStreams, _test: { getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, embedId: embedId, extractVidhide: extractVidhide } };
