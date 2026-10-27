@@ -16,7 +16,7 @@ provider answers `[]` for `tv` without touching the network.
 
 Lives in `src/providers/cinecalidad.js` and ships as the built `providers/cinecalidad.js`. It owns slug guessing and
 the year guard, and takes HTTP, base64 decoding, the unpacker, the resolvers and quality inference from
-[core](core); no npm dependency, no import of another site.
+[utils](utils); no npm dependency, no import of another site.
 
 ## Resolving a movie
 
@@ -25,7 +25,7 @@ follows the site's taste rather than TMDB's (often the English title). So the pr
 TMDB knows for the id — Spanish, original and regional alternatives — turns each into a slug candidate,
 requests them all at once, and lets the matcher decide.
 
-1. `core.titlesFor` gives the title set and the release year (see [core](core)).
+1. `titlesFor` gives the title set and the release year (see [utils](utils)).
 2. Up to three slugs × `''`/`'-2'`/`'-3'` are requested in parallel — the site appends a counter when two
    movies collide — and only the pages that actually carry players are kept.
 3. `core.bestTitleMatch` scores each page's `<h1>` against the title set, with the year as a bonus and veto,

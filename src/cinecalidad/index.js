@@ -1,113 +1,31 @@
-// Goes straight to cinecalidad.vg: the movie page carries each player as a base64 `data-src`, so one
-// request per candidate slug is all the scraping there is. Vimeos and StreamWish resolve; VOE is skipped.
+/**
+ * CineCalidad — provider entry point called by Nuvio.
+ */
 
-const core = require('../core');
+import { extractStreams, _test } from './extractor.js';
+import { tmdbSettings } from '../_utils/tmdb.js';
+import log from './log.js';
 
-const BASE = 'https://www.cinecalidad.vg';
-// The site has no language metadata; it is a Latino catalogue, so every stream is labelled Latino.
-const LANGUAGE = 'Latino';
-const SERVERS = { vimeos: 'Vimeos', streamwish: 'Streamwish' };
-// Slugs are guessed from the title, so the site's own numbering (-2, -3, …) has to be tried too.
-const SLUG_VARIANTS = ['', '-2', '-3'];
-
-function onSettings() {
-    return core.tmdbSettings('Required. The site is searched by a slug built from the Spanish title, so the title has to come from TMDB.');
+export function onSettings() {
+    return tmdbSettings('Required. The site is searched by a slug built from the Spanish title, so the title has to come from TMDB.');
 }
 
-// The site's own title rarely matches TMDB's, so the Spanish title is tried first and the original title
-// second; both carry the release year, which the page's <h1> has to agree with.
-// The site's own title rarely matches TMDB's, so every harvested title becomes a slug candidate and the
-// page's own <h1> decides which candidate is the right movie.
-function getTitles(tmdbId) {
-    return core.titlesFor(tmdbId, 'movie');
-}
-
-function movieUrl(slug) {
-    return BASE + '/pelicula/' + slug + '/';
-}
-
-// The page's <h1> carries the title and its release year; that header is what the matcher scores.
-function pageTitle(html) {
-    const h1 = /<h1[^>]*>([\s\S]*?)<\/h1>/i.exec(html);
-    return h1 ? core.splitTitleYear(h1[1].replace(/<[^>]*>/g, '')) : { title: '', year: null };
-}
-
-function pageYear(html) {
-    return pageTitle(html).year;
-}
-
-function embedUrls(html) {
-    const found = [];
-    const re = /data-src="([A-Za-z0-9+/=]{20,})"/g;
-    let m;
-    while ((m = re.exec(html))) {
-        const url = core.decodeBase64(m[1]);
-        if (/^https?:\/\//.test(url) && found.indexOf(url) < 0) found.push(url);
+/**
+ * @param {string} tmdbId
+ * @param {string} mediaType
+ * @param {number} season
+ * @param {number} episode
+ */
+export async function getStreams(tmdbId, mediaType, season, episode) {
+    try {
+        log(mediaType === 'movie' ? `Request: ${mediaType} ${tmdbId}` : `Request: ${mediaType} ${tmdbId}: S${season}E${episode}`);
+        return await extractStreams(tmdbId, mediaType, season, episode);
+    } catch (error) {
+        log('warn', error.message);
+        return [];
     }
-    return found;
 }
 
-// Tries every slug candidate at once and keeps the page the matcher picks: a page whose title or year does
-// not agree is dropped instead of used, because another movie's streams are worse than none.
-function findMoviePage(titleList, year) {
-    const candidates = [];
-    core.slugVariants(titleList, 3).forEach(function (slug) {
-        SLUG_VARIANTS.forEach(function (variant) {
-            candidates.push(slug + variant);
-        });
-    });
-    return Promise.all(candidates.map(function (slug) {
-        return core.fetchText(movieUrl(slug), BASE + '/')
-            .then(function (html) {
-                const head = pageTitle(html);
-                return { html: html, title: head.title, year: head.year };
-            })
-            .catch(function () { return null; });
-    })).then(function (pages) {
-        const usable = pages.filter(function (p) { return p && embedUrls(p.html).length; });
-        const match = core.bestTitleMatch(titleList, year, usable, {});
-        return match ? match.html : null;
-    });
-}
+export const _testAll = Object.assign({ onSettings }, _test);
 
-function resolverFor(embedUrl) {
-    const host = core.hostOf(embedUrl);
-    if (host.indexOf('vimeos') >= 0) return { server: 'vimeos', resolve: core.resolveVimeos };
-    if (/streamwish|hlswish|hglink|strwish/.test(host)) return { server: 'streamwish', resolve: core.resolveStreamWish };
-    return null;
-}
-
-function streamsFrom(embedUrl) {
-    const resolver = resolverFor(embedUrl);
-    if (!resolver) return Promise.resolve([]);
-    return resolver.resolve(embedUrl).then(function (found) {
-        found.forEach(function (s) { s.quality = core.inferQuality(s.url, resolver.server); });
-        return core.labeled('CineCalidad', LANGUAGE, SERVERS[resolver.server], found);
-    }).catch(function () { return []; });
-}
-
-function getStreams(tmdbId, mediaType, season, episode) {
-    if (mediaType !== 'movie') return Promise.resolve([]);
-    return getTitles(tmdbId)
-        .then(function (meta) { return findMoviePage(meta.titles, meta.year); })
-        .then(function (html) {
-            if (!html) return [];
-            return Promise.all(embedUrls(html).filter(resolverFor).map(streamsFrom));
-        })
-        .then(function (streams) { return [].concat.apply([], streams); })
-        .catch(function (err) {
-            console.warn('[CineCalidad] ' + err.message);
-            return [];
-        });
-}
-
-module.exports = {
-    getStreams: getStreams,
-    onSettings: onSettings,
-    _test: {
-        onSettings: onSettings, getTitles: getTitles, buildSlug: core.buildSlug, movieUrl: movieUrl, pageYear: pageYear,
-        pageTitle: pageTitle, embedUrls: embedUrls, findMoviePage: findMoviePage, decodeBase64: core.decodeBase64, unpack: core.unpack,
-        inferQuality: core.inferQuality, resolveVimeos: core.resolveVimeos, resolveStreamWish: core.resolveStreamWish,
-        resolverFor: resolverFor, playableLinks: core.playableLinks, vibuxerUrl: core.vibuxerUrl
-    }
-};
+export { _testAll as _test };

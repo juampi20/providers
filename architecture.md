@@ -14,25 +14,30 @@ every provider (`id`, `name`, `filename`, `supportedTypes`, `formats`, `contentL
 those files are **build output**, not source:
 
 ```
-src/core.js                  ──┐
-src/<provider>/index.js       ──┼─▶ npm run build (esbuild) ──▶ providers/<provider>.js ──▶ Nuvio
-src/<provider>/provider.json  ──┘        └─▶ manifest.json (scrapers generados)
-                                                 ▲
-                            test/<provider>.test.js (fixtures)   scripts/<provider>-live.js (real sites)
+src/<provider>/index.js       ──┐
+src/<provider>/extractor.js    ──┤
+src/<provider>/log.js          ──┼─▶ node build.js (esbuild) ──▶ providers/<provider>.js ──▶ Nuvio
+src/<provider>/scraper.json    ──┘        └─▶ manifest.json (scrapers generados)
+
+src/_utils/*.js   helpers compartidos      src/_template/   punto de partida del próximo provider
 ```
 
-`src/core.js` holds everything that is not site-specific — HTTP, the packed-player unpacker, the vimeos and
-streamwish resolvers, quality inference, slug folding, the title matcher, the language cut, the TMDB
-key/settings helpers. A provider directory holds only its own flow — ids, URLs, page parsing, which servers
-it trusts — plus a `provider.json` with its manifest entry. esbuild bundles core and the provider into the
-single file Nuvio loads, `crypto-js` included, so the artifact issues no runtime `require` — that is what
-makes it safe on FireTV.
+`src/_utils/` holds everything that is not site-specific — HTTP, the packed-player unpacker, the vimeos,
+streamwish and vidhide resolvers, quality inference, the title matcher, the language cut, the stream label
+shape, the TMDB key/settings helpers. A provider directory holds only its own flow: `index.js` is the entry
+Nuvio calls, `extractor.js` the site logic, `log.js` the prefixed logger, and `scraper.json` the manifest
+entry (merged over `scraper-defaults.json`, with `filename` derived).
 
-Both `providers/*.js` and the manifest's `scrapers` array are **build output**: the entry comes from
-`provider.json` and its `filename` is derived, so a provider cannot point at the wrong file or drift from
-its entry. Editing `providers/*.js` by hand is a dead end: `npm run build` overwrites them, and `npm test`
-builds before it tests, so the tests always run against what would ship. The `_test` export surface a
-provider exposes is what the tests and the live scripts call.
+`build.js` (esbuild, `target: es2016`) bundles each provider into the single file Nuvio loads. `crypto-js`
+and `cheerio` stay **external** — Nuvio's plugin runtime provides them, so the artifact carries
+`require("crypto-js")` instead of a 200 KB copy, and `async`/`await` in `src/` is lowered to generators on
+the way out.
+
+Both `providers/*.js` and the manifest's `scrapers` array are **build output**, and the output directory is
+the repo root so the manifest URL Nuvio already has does not move. Editing `providers/*.js` by hand is a
+dead end: `npm run build` overwrites them, and `npm test` builds before it tests, so the tests always run
+against what would ship. The `_test` export surface a provider exposes is what the tests and the live
+scripts call.
 
 `server.js` (`npm start`) serves the repo over HTTP so a Nuvio *debug build* can load a provider or the
 manifest from `:3000` in its Plugin Tester — the loop that replaces pushing for every change.
@@ -66,9 +71,9 @@ contract shapes every provider:
 ## Invariants
 
 - Providers are independent **as built**: no built provider requires another, and the single file Nuvio
-  loads carries everything it needs. Sharing happens at build time through [core](core), never at runtime,
+  loads carries everything it needs. Sharing happens at build time through [utils](utils), never at runtime,
   and a site file must not reach into another site's code.
-- [core](core) knows nothing about any site: it holds the parts every site repeats and nothing that only one
+- [utils](utils) knows nothing about any site: it holds the parts every site repeats and nothing that only one
   site needs. When a second site needs a helper, it moves there instead of being copied again.
 - A provider that addresses titles by id works without any key; a provider that addresses them by a
   site-derived slug needs TMDB metadata, declares the settings field, and returns `[]` with a warning when

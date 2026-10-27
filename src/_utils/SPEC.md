@@ -1,8 +1,8 @@
 ---
-id: core
+id: utils
 type: module-design
 status: draft
-title: Shared provider core
+title: Shared provider utilities (src/_utils)
 parent: architecture
 ---
 

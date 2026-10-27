@@ -15,7 +15,7 @@ answers the player list as JSON, so only the players themselves are parsed — t
 ## Boundary
 
 Lives in `src/providers/hackstore.js` and ships as the built `providers/hackstore.js`. It owns the site's API calls
-and slug rules and takes HTTP, the unpacker, the language cut and quality inference from [core](core); no
+and slug rules and takes HTTP, the unpacker, the language cut and quality inference from [utils](utils); no
 npm dependency, no import of another site.
 
 ## Resolving a title
@@ -54,6 +54,6 @@ Only hosts with a resolver become streams; everything else is dropped before any
 `quality` is read from the tier list inside a multi-quality master URL (`_,n,h,.urlset`) — a pure function,
 so no link is ever probed. A URL with no tier and no `<n>p` in it reports `Auto`.
 
-Streams are labelled as [core](core) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
+Streams are labelled as [utils](utils) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
 language, numbered suffix in `title` when one server yields several links — and carry the player
 `User-Agent` plus the embed `Referer` the CDN expects.

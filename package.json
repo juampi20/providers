@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node scripts/build.js",
-    "build:min": "node scripts/build.js --minify",
+    "build": "node build.js",
+    "build:min": "node build.js --minify",
     "test": "npm run build && node --test",
     "start": "node server.js",
     "live": "node scripts/sololatino-live.js"

@@ -17,12 +17,16 @@ Personal provider repository for Nuvio.
 
 ## Adding a provider
 
-1. Create `src/<name>/index.js` that exports `getStreams(tmdbId, mediaType, season, episode)` and resolves to a list of `{ name, title, url, quality, headers }`. Site-specific flow only — HTTP, the unpacker, the resolvers, the language cut, the title matcher and quality inference come from `src/core.js`. If the provider grows, split it into `extractor.js`, `http.js`, … next to `index.js` and require them.
-2. Add `src/<name>/provider.json` with the manifest entry (`id`, `name`, `description`, `version`, `supportedTypes`, …). `filename` is derived, so it can't point at the wrong file.
-3. `npm run build` bundles it into `providers/<name>.js` and regenerates the `scrapers` array of `manifest.json`.
-4. Add tests in `test/` with saved fixtures and a `scripts/<name>-live.js` that hits the real site.
+1. Copiá el template: `cp -r src/_template src/<name>` y renombrá `PROVIDER_NAME`.
+   - `index.js` — la entrada que llama Nuvio; exporta `getStreams` y `onSettings`, atrapa errores y delega.
+   - `extractor.js` — el flujo del sitio: ids, URLs, parseo, qué servidores confía.
+   - `log.js` — logger con prefijo `[Proveedor]`.
+   - `scraper.json` — la entrada del manifest (`id`, `name`, `description`, `version`, `supportedTypes`, …); se mergea sobre `scraper-defaults.json` y el `filename` se deriva.
+2. Lo compartido va a `src/_utils/`: `http.js`, `packed.js` (players empaquetados y resolvers), `quality.js`, `matcher.js` (títulos), `labels.js` (forma del stream y corte por idioma), `tmdb.js`, `jsunpack.js`, `useragent.js`.
+3. `npm run build` buildea a `providers/<name>.js` y regenera el `scrapers` de `manifest.json`.
+4. Agregá tests en `test/` con fixtures guardadas y un `scripts/<name>-live.js` contra el sitio real.
 
-`providers/*.js` and the `scrapers` block of `manifest.json` are build output: edit `src/`, never them.
+`providers/*.js` y el bloque `scrapers` de `manifest.json` son salida de build: se edita `src/`, nunca ellos.
 
 Nuvio runs providers in QuickJS on desktop and Hermes on TV/mobile, wrapped in a function. For TMDB calls, read the global `TMDB_API_KEY` that Nuvio injects and never declare your own, since a local one hides it. Older builds inject none, so let users save a key through `onSettings` (it comes back in `SCRAPER_SETTINGS`, and the manifest entry needs `hasSettings: true`) and keep a fallback that needs no key.
 
@@ -32,9 +36,11 @@ FireTV runs providers on Hermes, which has no `Buffer` and may lack `AbortContro
 
 ## Source layout
 
-`src/<provider>/index.js` holds one provider's own flow and `src/<provider>/provider.json` its manifest entry; `src/core.js` holds what they share — HTTP, the packed-player unpacker, the vimeos/streamwish resolvers, quality inference, the language cut, the title matcher, the TMDB key helpers. `npm run build` (esbuild, `target: es2016`) bundles each into `providers/<provider>.js`, which is what Nuvio downloads, and regenerates the manifest from the `provider.json` files.
+Cada provider vive en su carpeta: `src/<provider>/{index.js, extractor.js, log.js, scraper.json}`. Lo compartido está en `src/_utils/` y el punto de partida para uno nuevo es `src/_template/`. `build.js` (esbuild, `target: es2016`) buildea cada uno a `providers/<provider>.js` — lo que Nuvio descarga — y regenera `manifest.json` desde los `scraper.json` + `scraper-defaults.json`.
 
-**`providers/` y el bloque `scrapers` de `manifest.json` son salida de build — se edita `src/` y se rebuildea.** El bundle inlinea `crypto-js`, así que un provider no llama a `require` en runtime, que es lo que lo mantiene vivo en el Hermes de FireTV.
+**`providers/` y el bloque `scrapers` de `manifest.json` son salida de build — se edita `src/` y se rebuildea.** `crypto-js` y `cheerio` quedan **externos**: los provee el runtime de Nuvio, así que el artifact pesa ~17 KB en vez de 200 KB y hace `require("crypto-js")`. `async`/`await` está permitido en `src/`: esbuild lo baja a generadores para el target es2016.
+
+`src/baechu-squad/` es un provider de ejemplo que vino con el template (variedades coreanas, en inglés): queda deshabilitado y no forma parte del catálogo latino.
 
 ## Development
 

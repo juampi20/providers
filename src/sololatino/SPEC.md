@@ -16,7 +16,7 @@ list → packed-player links.
 
 Lives in `src/providers/sololatino.js` and ships as the built `providers/sololatino.js`. It owns the embed69-specific
 parts — the POW/AES page, the `/video/` server list, the IMDb id chain — and takes everything generic from
-[core](core); it never reaches into another site's file.
+[utils](utils); it never reaches into another site's file.
 
 ## Resolving a title
 
@@ -64,7 +64,7 @@ as-is. Both are then unpacked (Dean Edwards' `p,a,c,k,e,d`) to reach the player'
 which only `hls2` and `hls3` become streams. `hls4` is excluded because its segments carry a PNG header
 libmpv refuses; nothing is probed ([goal](goal#non-goals)).
 
-Streams are labelled as [core](core) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
+Streams are labelled as [utils](utils) shapes them — `name` = `Provider • CALIDAD • Servidor`, `title` = the
 language, numbered suffix in `title` when one server yields several links — and carry the player
 `User-Agent` plus the embed `Referer` the CDN expects. `quality` comes from the tier list in the link
 itself (`_,l,n,h,.urlset`) and is `Auto` when the link carries no tier — a Vidhide `/hls2/…/…_n/master.m3u8`

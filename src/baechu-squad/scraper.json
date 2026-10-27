@@ -1,0 +1,8 @@
+{
+    "name": "Baechu Squad (ejemplo)",
+    "description": "Provider de ejemplo que vino con el template: variedades coreanas, catalogadas en inglés. Queda deshabilitado.",
+    "supportedTypes": ["tv"],
+    "enabled": false,
+    "contentLanguage": ["en"],
+    "formats": ["m3u8", "mp4"]
+}
