@@ -4,14 +4,13 @@
 
 import { extractStreams, _test } from './extractor.js';
 import { applyContext } from '../_utils/labels.js';
+import { tmdbSettings } from '../_utils/tmdb.js';
 import log from './log.js';
 
-/**
- * @param {string} tmdbId
- * @param {string} mediaType
- * @param {number} season
- * @param {number} episode
- */
+export function onSettings() {
+    return tmdbSettings('Required. The site is addressed by the IMDb id, which this provider reads from TMDB.');
+}
+
 export async function getStreams(tmdbId, mediaType, season, episode) {
     try {
         log(mediaType === 'movie' ? `Request: ${mediaType} ${tmdbId}` : `Request: ${mediaType} ${tmdbId}: S${season}E${episode}`);
@@ -23,6 +22,6 @@ export async function getStreams(tmdbId, mediaType, season, episode) {
     }
 }
 
-export const _testAll = _test;
+export const _testAll = Object.assign({ onSettings }, _test);
 
 export { _testAll as _test };
