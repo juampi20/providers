@@ -6,7 +6,7 @@
     {
       "id": "animeav1",
       "name": "AnimeAV1",
-      "description": "Anime en Latino y subtitulado vía animeav1.com (HLS, VOE, StreamTape, MP4Upload).",
+      "description": "Anime en Latino y subtitulado vía animeav1.com (HLS, VOE, StreamTape, MP4Upload). Deshabilitado.",
       "version": "1.0.0",
       "author": "chester",
       "supportedTypes": [
@@ -14,7 +14,7 @@
         "movie"
       ],
       "filename": "providers/animeav1.js",
-      "enabled": true,
+      "enabled": false,
       "logo": "https://www.google.com/s2/favicons?domain=animeav1.com&sz=128",
       "contentLanguage": [
         "es"

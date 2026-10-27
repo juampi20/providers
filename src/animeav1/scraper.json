@@ -1,7 +1,8 @@
 {
     "id": "animeav1",
     "name": "AnimeAV1",
-    "description": "Anime en Latino y subtitulado vía animeav1.com (HLS, VOE, StreamTape, MP4Upload).",
+    "description": "Anime en Latino y subtitulado vía animeav1.com (HLS, VOE, StreamTape, MP4Upload). Deshabilitado.",
+    "enabled": false,
     "version": "1.0.0",
     "author": "chester",
     "supportedTypes": ["tv", "movie"],
