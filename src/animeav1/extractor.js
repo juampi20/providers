@@ -81,20 +81,37 @@ export function parseEmbeds(arr) {
     return embeds;
 }
 
+/** Temporada que declara el slug de una serie, o 0 cuando no declara ninguna. */
+export function declaredSeason(slug) {
+    const text = String(slug || '');
+    const ordinal = /-(\d+)(?:st|nd|rd|th)-season/.exec(text);
+    if (ordinal) return parseInt(ordinal[1], 10);
+    const plain = /-(?:season|temporada)-?(\d+)/.exec(text);
+    if (plain) return parseInt(plain[1], 10);
+    return 0;
+}
+
 /**
- * Las temporadas son slugs distintos (`…-2nd-season`) con episodios numerados desde 1, así que para una
- * temporada mayor a la primera se prefiere el candidato cuyo slug lo declare.
- * @param {Array} candidates
+ * Ordena los candidatos por temporada: primero el que la declara igual a la pedida, después los que no
+ * declaran ninguna (que son la temporada 1) y último el de otra temporada. El sitio devuelve primero la
+ * temporada que está en emisión, así que sin esto una búsqueda de la 1 termina en la 2.
+ * @param {Array<{slug: string}>} candidates
+ * @param {number|string} season
  */
 export function seasonCandidates(candidates, season) {
-    if (parseInt(season, 10) <= 1) return candidates;
-    const ordinals = { 2: '2nd', 3: '3rd', 4: '4th', 5: '5th', 6: '6th' };
-    const wanted = ordinals[parseInt(season, 10)];
-    const hit = candidates.filter((c) => {
-        const m = /-(\d+)(?:st|nd|rd|th)-season/.exec(c.slug);
-        return m && parseInt(m[1], 10) === parseInt(season, 10);
+    const wanted = parseInt(season, 10) || 1;
+    const ranked = candidates.map((candidate, order) => {
+        const declared = declaredSeason(candidate.slug);
+        let rank;
+        if (declared === wanted) rank = 3;
+        else if (declared === 0) rank = wanted === 1 ? 2 : 1;
+        else rank = -10;
+        return { candidate, rank, order };
     });
-    return hit.length ? hit : candidates.filter((c) => c.slug.indexOf(wanted || '-') >= 0);
+    return ranked
+        .filter((entry) => entry.rank > 0)
+        .sort((a, b) => (b.rank - a.rank) || (a.order - b.order))
+        .map((entry) => entry.candidate);
 }
 
 async function resolveEmbed(embed) {
@@ -143,6 +160,7 @@ export const _test = {
     payload,
     parseEmbeds,
     seasonCandidates,
+    declaredSeason,
     resolverFor,
     groupByLanguage: (embeds) => groupByLanguage(embeds, LANGUAGE_ORDER)
 };
