@@ -131,53 +131,53 @@ function withRoutes(routes, fn) {
     return fn().then((r) => { global.fetch = original; return { result: r, calls }; }, (e) => { global.fetch = original; throw e; });
 }
 
-function hlsRoutes(base, segment) {
+function hlsRoutes(base, segment, variants) {
     const r = {};
-    r[base + '/master.m3u8'] = { status: 200, body: '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1\nindex.m3u8\n' };
-    r[base + '/index.m3u8'] = { status: 200, body: '#EXTM3U\n#EXTINF:6,\nseg-1.ts\n' };
-    r[base + '/seg-1.ts'] = { status: 206, body: segment };
+    const list = variants || [['index.m3u8', 1, segment]];
+    r[base + '/master.m3u8'] = { status: 200, body: '#EXTM3U\n' + list.map(([name, bw]) => '#EXT-X-STREAM-INF:BANDWIDTH=' + bw + '\n' + name).join('\n') + '\n' };
+    list.forEach(([name, , seg]) => {
+        const id = name.replace('.m3u8', '');
+        r[base + '/' + name] = { status: 200, body: '#EXTM3U\n#EXTINF:6,\n' + id + '-1.ts\n' };
+        if (seg) r[base + '/' + id + '-1.ts'] = { status: 206, body: seg };
+    });
     return r;
 }
 
-test('pickPlayable skips a link whose CDN fails and prefers clean TS over a PNG-wrapped one', () => {
-    const routes = Object.assign({}, hlsRoutes('https://a.example', TS), hlsRoutes('https://c.example', PNG_WRAPPED));
-    const links = { hls2: 'https://broken.example/master.m3u8', hls3: 'https://c.example/master.m3u8', hls4: 'https://a.example/master.m3u8' };
-    return withRoutes(routes, () => _test.pickPlayable(links, 'https://embed.example/', {})).then(({ result, calls }) => {
-        assert.strictEqual(result, 'https://a.example/master.m3u8');
-        assert.deepStrictEqual(calls.filter((c) => /seg-1/.test(c.url)).map((c) => c.headers.Range), ['bytes=0-1023', 'bytes=0-1023']);
+test('playableLinks keeps clean TS links, never tries hls4 and drops failing or PNG-wrapped ones', () => {
+    const routes = Object.assign({}, hlsRoutes('https://a.example', TS), hlsRoutes('https://w.example', PNG_WRAPPED), hlsRoutes('https://c.example', TS));
+    const links = { hls2: 'https://w.example/master.m3u8', hls3: 'https://a.example/master.m3u8', hls4: 'https://c.example/master.m3u8' };
+    return withRoutes(routes, () => _test.playableLinks(links, 'https://embed.example/', {})).then(({ result, calls }) => {
+        assert.deepStrictEqual(result, ['https://a.example/master.m3u8']);
+        assert.ok(!calls.some((c) => c.url.indexOf('https://c.example/') === 0), 'hls4 must not be fetched');
+        assert.ok(calls.filter((c) => /-1\.ts$/.test(c.url)).every((c) => c.headers.Range === 'bytes=0-1023'));
     });
 });
 
-test('pickPlayable falls back to a PNG-wrapped link and returns null when nothing plays', () => {
-    const wrapped = hlsRoutes('https://c.example', PNG_WRAPPED);
-    return withRoutes(wrapped, () => _test.pickPlayable({ hls2: 'https://broken.example/master.m3u8', hls4: '/master.m3u8' }, 'https://c.example/e/x', {}))
-        .then(({ result }) => {
-            assert.strictEqual(result, 'https://c.example/master.m3u8');
-            return withRoutes({}, () => _test.pickPlayable({ hls2: 'https://broken.example/master.m3u8' }, 'https://c.example/e/x', {}));
-        })
-        .then(({ result }) => assert.strictEqual(result, null));
+test('playableLinks checks the highest-bandwidth variant, the one the player picks', () => {
+    const deadTop = hlsRoutes('https://a.example', null, [['low.m3u8', 100, TS], ['high.m3u8', 900, null]]);
+    const liveTop = hlsRoutes('https://b.example', null, [['low.m3u8', 100, null], ['high.m3u8', 900, TS]]);
+    const links = { hls2: 'https://a.example/master.m3u8', hls3: 'https://b.example/master.m3u8' };
+    return withRoutes(Object.assign({}, deadTop, liveTop), () => _test.playableLinks(links, 'https://embed.example/', {}))
+        .then(({ result }) => assert.deepStrictEqual(result, ['https://b.example/master.m3u8']));
 });
 
-test('pickPlayable does not wait on a hung CDN once a working link is known', () => {
-    const routes = hlsRoutes('https://c.example', PNG_WRAPPED);
+test('playableLinks returns what passed by the deadline when a CDN hangs', () => {
+    const routes = hlsRoutes('https://a.example', TS);
     const original = global.fetch;
-    global.fetch = (url, opts) => {
+    global.fetch = (url) => {
         if (url.indexOf('https://hung.example/') === 0) return new Promise(() => {});
         const r = routes[url] || { status: 502, body: '' };
         return Promise.resolve({ ok: r.status < 400, status: r.status, text: () => Promise.resolve(typeof r.body === 'string' ? r.body : ''), arrayBuffer: () => Promise.resolve(r.body.buffer) });
     };
-    const links = { hls2: 'https://hung.example/master.m3u8', hls4: 'https://c.example/master.m3u8' };
-    return _test.pickPlayable(links, 'https://c.example/e/x', {}, 20).then((result) => {
-        global.fetch = original;
-        assert.strictEqual(result, 'https://c.example/master.m3u8');
-    }, (e) => { global.fetch = original; throw e; });
-});
-
-test('pickPlayable gives up at the deadline when every CDN hangs', () => {
-    const original = global.fetch;
-    global.fetch = () => new Promise(() => {});
-    return _test.pickPlayable({ hls2: 'https://hung.example/a.m3u8', hls3: 'https://hung.example/b.m3u8' }, 'https://e.example/x', {}, 10, 30)
-        .then((result) => { global.fetch = original; assert.strictEqual(result, null); }, (e) => { global.fetch = original; throw e; });
+    const restore = (v) => { global.fetch = original; return v; };
+    return _test.playableLinks({ hls2: 'https://hung.example/master.m3u8', hls3: 'https://a.example/master.m3u8' }, 'https://e.example/x', {}, 30)
+        .then(restore, (e) => { restore(); throw e; })
+        .then((result) => {
+            assert.deepStrictEqual(result, ['https://a.example/master.m3u8']);
+            global.fetch = () => new Promise(() => {});
+            return _test.playableLinks({ hls2: 'https://hung.example/a.m3u8' }, 'https://e.example/x', {}, 30).then(restore, (e) => { restore(); throw e; });
+        })
+        .then((result) => assert.deepStrictEqual(result, []));
 });
 
 test('playableEmbed sends streamwish mirrors to vibuxer.com and keeps vidhide as is', () => {

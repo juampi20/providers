@@ -166,8 +166,8 @@ function extractHls(embedUrl) {
     return fetchText(embedUrl, 'https://embed69.org/').then(function (html) {
         const script = unpack(html);
         const links = script && between(script, 'var links=', ';');
-        if (!links) return null;
-        return pickPlayable(JSON.parse(links), embedUrl, { 'User-Agent': UA, Referer: embedUrl });
+        if (!links) return [];
+        return playableLinks(JSON.parse(links), embedUrl, { 'User-Agent': UA, Referer: embedUrl });
     });
 }
 
@@ -177,11 +177,19 @@ function resolveUrl(ref, base) {
     return base.replace(/[?#].*$/, '').replace(/[^/]*$/, '') + ref;
 }
 
-// First URI of a playlist, or null when the response is not a playlist (CDN error pages come back as HTML).
-function firstUri(text) {
+// URI of the highest-bandwidth entry (what the player picks), or null when it is not a playlist (CDN error pages are HTML).
+function bestUri(text) {
     if (!text || String(text).trim().indexOf('#EXTM3U') !== 0) return null;
-    const line = String(text).split('\n').map(function (l) { return l.trim(); }).filter(function (l) { return l && l.charAt(0) !== '#'; })[0];
-    return line || null;
+    const lines = String(text).split('\n').map(function (l) { return l.trim(); });
+    let best = null;
+    let bestBandwidth = -1;
+    lines.forEach(function (line, i) {
+        if (!line || line.charAt(0) === '#') return;
+        const info = /BANDWIDTH=(\d+)/.exec(lines[i - 1] || '');
+        const bandwidth = info ? parseInt(info[1], 10) : 0;
+        if (bandwidth > bestBandwidth) { best = line; bestBandwidth = bandwidth; }
+    });
+    return best;
 }
 
 // 'ts' for clean MPEG-TS, 'wrapped' for TS behind a fake header (the tiktokcdn copies prepend a PNG), else null.
@@ -193,17 +201,17 @@ function segmentKind(b) {
     return null;
 }
 
-// Walks master -> variant -> first 1 KB of the first segment, since a CDN can serve the playlists and then fail the segments.
+// Walks master -> best variant -> first 1 KB of its first segment, since a CDN can serve the playlists and fail the segments.
 function probeHls(master, headers) {
     const get = function (url) {
         return fetch(url, { headers: headers }).then(function (res) { return res.ok ? res.text() : null; });
     };
     return get(master).then(function (text) {
-        const variantRef = firstUri(text);
+        const variantRef = bestUri(text);
         if (!variantRef) return null;
         const variant = resolveUrl(variantRef, master);
         return get(variant).then(function (text2) {
-            const segmentRef = firstUri(text2);
+            const segmentRef = bestUri(text2);
             if (!segmentRef) return null;
             return fetch(resolveUrl(segmentRef, variant), { headers: Object.assign({ Range: 'bytes=0-1023' }, headers) })
                 .then(function (res) { return res.ok ? res.arrayBuffer() : null; })
@@ -212,34 +220,25 @@ function probeHls(master, headers) {
     }).catch(function () { return null; });
 }
 
-// hls2/hls3 CDNs often fail or hang past Nuvio's 60 s timeout; hls4 works but its PNG-wrapped segments may not play.
-// Without setTimeout (desktop 1.1.21) there is no waiting, so the first wrapped link wins and a full hang can't be cut.
-function pickPlayable(links, embedUrl, headers, waitMs, deadlineMs) {
-    const candidates = ['hls2', 'hls3', 'hls4']
+// hls4's PNG-wrapped segments never play in Nuvio's libmpv, and hls2/hls3 CDNs fail or hang, so probe hls2/hls3
+// in parallel and keep the clean ones. Without setTimeout (desktop 1.1.21) it waits for Nuvio's own fetch timeouts.
+function playableLinks(links, embedUrl, headers, deadlineMs) {
+    const candidates = ['hls2', 'hls3']
         .filter(function (k) { return links[k]; })
         .map(function (k) { return resolveUrl(links[k], embedUrl); });
-    const canWait = typeof setTimeout === 'function';
     return new Promise(function (resolve) {
+        const passed = [];
         let pending = candidates.length;
-        let wrapped = null;
         let done = false;
-        function finish(url) {
-            if (!done) { done = true; resolve(url); }
+        function finish() {
+            if (!done) { done = true; resolve(passed.slice()); }
         }
-        if (!pending) return finish(null);
-        if (canWait) {
-            setTimeout(function () { if (wrapped) finish(wrapped); }, waitMs === undefined ? 2500 : waitMs);
-            setTimeout(function () { finish(wrapped); }, deadlineMs === undefined ? 5000 : deadlineMs);
-        }
+        if (!pending) return finish();
+        if (typeof setTimeout === 'function') setTimeout(finish, deadlineMs === undefined ? 5000 : deadlineMs);
         candidates.forEach(function (url) {
             probeHls(url, headers).then(function (kind) {
-                pending--;
-                if (kind === 'ts') return finish(url);
-                if (kind === 'wrapped' && !wrapped) {
-                    wrapped = url;
-                    if (!canWait) return finish(url);
-                }
-                if (!pending) finish(wrapped);
+                if (kind === 'ts') passed.push(url);
+                if (--pending === 0) finish();
             });
         });
     });
@@ -255,23 +254,24 @@ function getStreams(tmdbId, mediaType, season, episode) {
             const embeds = parsePage(html).filter(function (e) { return playableEmbed(e); });
             return Promise.all(embeds.map(function (e) {
                 const embedUrl = playableEmbed(e);
-                return extractHls(embedUrl).then(function (url) {
-                    if (!url) return null;
-                    return {
-                        name: 'SoloLatino',
-                        title: (LANGUAGES[e.language] || e.language) + ' - ' + SERVERS[e.server],
-                        url: url,
-                        quality: 'Auto',
-                        headers: { 'User-Agent': UA, Referer: embedUrl }
-                    };
-                }).catch(function () { return null; });
+                return extractHls(embedUrl).then(function (urls) {
+                    return urls.map(function (url, i) {
+                        return {
+                            name: 'SoloLatino',
+                            title: (LANGUAGES[e.language] || e.language) + ' - ' + SERVERS[e.server] + (i ? ' ' + (i + 1) : ''),
+                            url: url,
+                            quality: 'Auto',
+                            headers: { 'User-Agent': UA, Referer: embedUrl }
+                        };
+                    });
+                }).catch(function () { return []; });
             }));
         })
-        .then(function (streams) { return streams.filter(Boolean); })
+        .then(function (streams) { return [].concat.apply([], streams); })
         .catch(function (err) {
             console.warn('[SoloLatino] ' + err.message);
             return [];
         });
 }
 
-module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, segmentKind: segmentKind, pickPlayable: pickPlayable, embedId: embedId, playableEmbed: playableEmbed, extractHls: extractHls } };
+module.exports = { getStreams: getStreams, onSettings: onSettings, _test: { onSettings: onSettings, getImdbId: getImdbId, parseEmbedPage: parseEmbedPage, parseVideoPage: parseVideoPage, parsePage: parsePage, unpack: unpack, segmentKind: segmentKind, playableLinks: playableLinks, embedId: embedId, playableEmbed: playableEmbed, extractHls: extractHls } };
