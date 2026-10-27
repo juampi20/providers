@@ -1,0 +1,12 @@
+{
+    "id": "megadedeoficial",
+    "name": "MegaDede",
+    "description": "Movies and series in Latin Spanish via megadede.mobi, el mismo motor que embed69.",
+    "version": "1.0.0",
+    "author": "chester",
+    "supportedTypes": ["movie", "tv"],
+    "logo": "https://www.google.com/s2/favicons?domain=megadede.mobi&sz=128",
+    "contentLanguage": ["es"],
+    "formats": ["m3u8"],
+    "hasSettings": true
+}

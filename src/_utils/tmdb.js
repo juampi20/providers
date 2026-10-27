@@ -40,3 +40,17 @@ export function tmdbGet(path, key) {
     const separator = path.indexOf('?') >= 0 ? '&' : '?';
     return fetchBrowserJson('https://api.themoviedb.org/3' + path + separator + 'api_key=' + encodeURIComponent(key));
 }
+
+/**
+ * The IMDb id for a TMDB id, which is what the embed69-family sites address titles by.
+ * Returns null when TMDB has none (the key is bad, or the title is not on IMDb).
+ * @param {string} tmdbId
+ * @param {string} mediaType
+ */
+export async function imdbIdFor(tmdbId, mediaType) {
+    const key = tmdbApiKey();
+    if (!key) throw new Error('No TMDB API key: this provider resolves the IMDb id from TMDB');
+    const path = mediaType === 'movie' ? '/movie/' + tmdbId : '/tv/' + tmdbId + '/external_ids';
+    const data = await tmdbGet(path, key);
+    return (data && data.imdb_id) || null;
+}

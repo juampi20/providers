@@ -5,13 +5,13 @@
  * streamwish, which share the packed `var links` player.
  */
 
-import CryptoJS from 'crypto-js';
 import { fetchBrowserText, fetchBrowserJson, BROWSER_UA } from '../_utils/http.js';
 import { between, hostOf, vibuxerUrl } from '../_utils/packed.js';
 import { resolveVidhide, resolveStreamWish } from '../_utils/resolvers.js';
 import { inferQuality } from '../_utils/quality.js';
 import { labeled, groupByLanguage, resolveFirstLanguage } from '../_utils/labels.js';
 import { tmdbApiKey } from '../_utils/tmdb.js';
+import { parsePowPage, POW_LANGUAGES, POW_LANGUAGE_ORDER } from '../_utils/pow.js';
 
 export const PROVIDER_NAME = 'Embed69';
 
@@ -19,8 +19,8 @@ export const PROVIDER_NAME = 'Embed69';
 const EMBED_BASE = 'https://embed69.org/video/';
 // Wikimedia answers 403 to browser-like User-Agents from non-browsers; it wants one naming the client.
 const WIKIDATA_UA = 'nuvio-providers/1.0 (https://github.com/juampi20/providers)';
-const LANGUAGES = { LAT: 'Latino', ESP: 'Castellano', SUB: 'Subtitulado' };
-const LANGUAGE_ORDER = ['LAT', 'ESP', 'SUB'];
+const LANGUAGES = POW_LANGUAGES;
+const LANGUAGE_ORDER = POW_LANGUAGE_ORDER;
 const SERVERS = { vidhide: 'Vidhide', streamwish: 'Streamwish' };
 
 // Without a key, or when TMDB has no answer (e.g. a bad key), fall back to Wikidata, which needs no key.
@@ -48,50 +48,12 @@ export function embedId(imdbId, mediaType, season, episode) {
     return imdbId + '-' + season + 'x' + String(episode).padStart(2, '0');
 }
 
-// Brute-force a nonce whose SHA-256 starts with `difficulty` zeros; the AES key is
-// SHA-256(challenge + nonce + salt).
-function deriveKey(challenge, difficulty, salt) {
-    const prefix = '0'.repeat(difficulty);
-    let nonce = 0;
-    while (CryptoJS.SHA256(challenge + nonce).toString().indexOf(prefix) !== 0) nonce++;
-    return CryptoJS.SHA256(challenge + nonce + salt);
-}
-
-// Payload is base64(iv[16] + ciphertext), AES-256-CBC.
-function decrypt(base64, key) {
-    try {
-        const raw = CryptoJS.enc.Base64.parse(base64);
-        const iv = CryptoJS.lib.WordArray.create(raw.words.slice(0, 4), 16);
-        const ciphertext = CryptoJS.lib.WordArray.create(raw.words.slice(4), raw.sigBytes - 16);
-        const plain = CryptoJS.AES.decrypt({ ciphertext }, key, {
-            iv, mode: CryptoJS.mode.CBC, padding: CryptoJS.pad.Pkcs7
-        }).toString(CryptoJS.enc.Utf8);
-        return plain || null;
-    } catch (e) {
-        return null;
-    }
-}
-
 /**
  * Returns [{ language, server, url }] from an embed69 page, or [] if the layout changed.
  * @param {string} html
  */
 export function parseEmbedPage(html) {
-    const challenge = between(html, "const POW_CHALLENGE = '", "';");
-    const difficulty = parseInt(between(html, 'const POW_DIFFICULTY = ', ';'), 10);
-    const salt = between(html, "const POW_SALT = '", "';");
-    const dataLink = between(html, 'dataLink = ', ';');
-    if (!challenge || isNaN(difficulty) || salt === null || !dataLink) return [];
-
-    const key = deriveKey(challenge, difficulty, salt);
-    const result = [];
-    JSON.parse(dataLink).forEach((lang) => {
-        (lang.sortedEmbeds || []).forEach((embed) => {
-            const url = embed.link && decrypt(embed.link, key);
-            if (url) result.push({ language: lang.video_language, server: embed.servername, url });
-        });
-    });
-    return result;
+    return parsePowPage(html);
 }
 
 /**

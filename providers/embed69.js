@@ -77,9 +77,6 @@ __export(index_exports, {
 });
 module.exports = __toCommonJS(index_exports);
 
-// src/embed69/extractor.js
-var import_crypto_js = __toESM(require("crypto-js"));
-
 // src/_utils/http.js
 var BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 function browserHeaders(referer) {
@@ -320,12 +317,67 @@ function tmdbSettings(description) {
   }];
 }
 
+// src/_utils/pow.js
+var import_crypto_js = __toESM(require("crypto-js"));
+function deriveKey(challenge, difficulty, salt) {
+  const prefix = "0".repeat(difficulty);
+  let nonce = 0;
+  while (import_crypto_js.default.SHA256(challenge + nonce).toString().indexOf(prefix) !== 0) nonce++;
+  return import_crypto_js.default.SHA256(challenge + nonce + salt);
+}
+function decryptLink(base64, key) {
+  try {
+    const raw = import_crypto_js.default.enc.Base64.parse(base64);
+    const iv = import_crypto_js.default.lib.WordArray.create(raw.words.slice(0, 4), 16);
+    const ciphertext = import_crypto_js.default.lib.WordArray.create(raw.words.slice(4), raw.sigBytes - 16);
+    const plain = import_crypto_js.default.AES.decrypt({ ciphertext }, key, {
+      iv,
+      mode: import_crypto_js.default.mode.CBC,
+      padding: import_crypto_js.default.pad.Pkcs7
+    }).toString(import_crypto_js.default.enc.Utf8);
+    return plain || null;
+  } catch (e) {
+    return null;
+  }
+}
+function dataLinkOf(html) {
+  const raw = between(html, "dataLink = ", ";");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+function parsePowPage(html, options = {}) {
+  const challenge = between(html, "const POW_CHALLENGE = '", "';") || between(html, 'POW_CHALLENGE = "', '";');
+  const difficulty = parseInt(between(html, "const POW_DIFFICULTY = ", ";") || between(html, "POW_DIFFICULTY = ", ";"), 10);
+  const salt = between(html, "const POW_SALT = '", "';") || between(html, 'POW_SALT = "', '";');
+  const blocks = dataLinkOf(html);
+  if (!challenge || isNaN(difficulty) || salt === null || !blocks) return [];
+  const key = deriveKey(challenge, difficulty, salt);
+  const result = [];
+  blocks.forEach((block) => {
+    (block.sortedEmbeds || []).forEach((embed) => {
+      if (embed.type && embed.type !== "video") return;
+      if (options.skipServers && options.skipServers.test(embed.servername || "")) return;
+      const url = embed.link && decryptLink(embed.link, key);
+      if (url && /^https?:\/\//.test(url)) {
+        result.push({ language: block.video_language, server: embed.servername, url });
+      }
+    });
+  });
+  return result;
+}
+var POW_LANGUAGES = { LAT: "Latino", ESP: "Castellano", SUB: "Subtitulado" };
+var POW_LANGUAGE_ORDER = ["LAT", "ESP", "SUB"];
+
 // src/embed69/extractor.js
 var PROVIDER_NAME = "Embed69";
 var EMBED_BASE = "https://embed69.org/video/";
 var WIKIDATA_UA = "nuvio-providers/1.0 (https://github.com/juampi20/providers)";
-var LANGUAGES = { LAT: "Latino", ESP: "Castellano", SUB: "Subtitulado" };
-var LANGUAGE_ORDER = ["LAT", "ESP", "SUB"];
+var LANGUAGES = POW_LANGUAGES;
+var LANGUAGE_ORDER = POW_LANGUAGE_ORDER;
 var SERVERS = { vidhide: "Vidhide", streamwish: "Streamwish" };
 function getImdbId(tmdbId, mediaType) {
   return __async(this, null, function* () {
@@ -350,42 +402,8 @@ function embedId(imdbId, mediaType, season, episode) {
   if (mediaType === "movie") return imdbId;
   return imdbId + "-" + season + "x" + String(episode).padStart(2, "0");
 }
-function deriveKey(challenge, difficulty, salt) {
-  const prefix = "0".repeat(difficulty);
-  let nonce = 0;
-  while (import_crypto_js.default.SHA256(challenge + nonce).toString().indexOf(prefix) !== 0) nonce++;
-  return import_crypto_js.default.SHA256(challenge + nonce + salt);
-}
-function decrypt(base64, key) {
-  try {
-    const raw = import_crypto_js.default.enc.Base64.parse(base64);
-    const iv = import_crypto_js.default.lib.WordArray.create(raw.words.slice(0, 4), 16);
-    const ciphertext = import_crypto_js.default.lib.WordArray.create(raw.words.slice(4), raw.sigBytes - 16);
-    const plain = import_crypto_js.default.AES.decrypt({ ciphertext }, key, {
-      iv,
-      mode: import_crypto_js.default.mode.CBC,
-      padding: import_crypto_js.default.pad.Pkcs7
-    }).toString(import_crypto_js.default.enc.Utf8);
-    return plain || null;
-  } catch (e) {
-    return null;
-  }
-}
 function parseEmbedPage(html) {
-  const challenge = between(html, "const POW_CHALLENGE = '", "';");
-  const difficulty = parseInt(between(html, "const POW_DIFFICULTY = ", ";"), 10);
-  const salt = between(html, "const POW_SALT = '", "';");
-  const dataLink = between(html, "dataLink = ", ";");
-  if (!challenge || isNaN(difficulty) || salt === null || !dataLink) return [];
-  const key = deriveKey(challenge, difficulty, salt);
-  const result = [];
-  JSON.parse(dataLink).forEach((lang) => {
-    (lang.sortedEmbeds || []).forEach((embed) => {
-      const url = embed.link && decrypt(embed.link, key);
-      if (url) result.push({ language: lang.video_language, server: embed.servername, url });
-    });
-  });
-  return result;
+  return parsePowPage(html);
 }
 function parseVideoPage(html) {
   const languages = {};

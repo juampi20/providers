@@ -75,6 +75,30 @@
       "supportsExternalPlayer": true
     },
     {
+      "id": "entrepeliculasyseries",
+      "name": "EntrePeliculasySeries",
+      "description": "Movies and series in Latin Spanish via entrepeliculasyseries.nz, el mismo motor que embed69.",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/entrepeliculasyseries.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=entrepeliculasyseries.nz&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
       "id": "hackstore",
       "name": "HackStore",
       "description": "Movies and series in Latin Spanish via hackstore2.com (vimeos, streamwish).",
@@ -87,6 +111,30 @@
       "filename": "providers/hackstore.js",
       "enabled": true,
       "logo": "https://www.google.com/s2/favicons?domain=hackstore2.com&sz=128",
+      "contentLanguage": [
+        "es"
+      ],
+      "formats": [
+        "m3u8"
+      ],
+      "limited": false,
+      "disabledPlatforms": [],
+      "hasSettings": true,
+      "supportsExternalPlayer": true
+    },
+    {
+      "id": "megadedeoficial",
+      "name": "MegaDede",
+      "description": "Movies and series in Latin Spanish via megadede.mobi, el mismo motor que embed69.",
+      "version": "1.0.0",
+      "author": "chester",
+      "supportedTypes": [
+        "movie",
+        "tv"
+      ],
+      "filename": "providers/megadedeoficial.js",
+      "enabled": true,
+      "logo": "https://www.google.com/s2/favicons?domain=megadede.mobi&sz=128",
       "contentLanguage": [
         "es"
       ],
